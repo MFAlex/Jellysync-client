@@ -251,6 +251,8 @@ export default {
         console.error("No playback URL. Nothing to play.");
         return;
       }
+      
+      this.syncState.setLastPlayed(mediaDetails);
 
       this.options.sources = [
         {
@@ -417,7 +419,7 @@ export default {
         this.showSubtitles(this.subtitleTrack);
       }
     },
-    syncStateSubtitleTrack(newVal: number | null) {
+    syncStateSubtitleTrack(newVal: number | null) { 
       if (this.subtitleTrack != newVal && this.playbackInfo != null) {
         const subtitleTracks = getSubtitleDetails(this.playbackInfo);
         const subtitleEntry =

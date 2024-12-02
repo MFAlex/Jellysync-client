@@ -105,6 +105,7 @@ export const useSyncStore = defineStore("sync", {
     playbackAudioTrack: -1,
     playbackSubtitleTrack: -1,
     playerVolume: 1.0,
+    lastPlayed: null as null | BaseItemDto,
 
     serverPlaybackTimestamp: null as null | number, //when the server requests to change timestamp
     media: null as null | string,
@@ -159,6 +160,11 @@ export const useSyncStore = defineStore("sync", {
     setSocket(socket: WebSocket) {
       this.$patch((state) => {
         state.socket = socket;
+      });
+    },
+    setLastPlayed(lastPlayed: BaseItemDto) {
+      this.$patch((state) => {
+        state.lastPlayed = lastPlayed;
       });
     },
     joinedSession(session: SyncSession) {

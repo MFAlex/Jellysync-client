@@ -11,14 +11,16 @@ export type PlayingState =
   | "buffering"
   | "nothing-playing";
 
-export interface SyncSessionMember {
+export interface SyncSessionMember { 
   index: number;
   displayName: string;
+  displayNameColor: string;
 }
 
 export interface CreateRoomRequest {
   type: "create";
   displayName: string;
+  displayNameColor: string;
   jellyfinHost: string;
 }
 
@@ -26,6 +28,7 @@ export interface JoinRoomRequest {
   type: "join";
   room: string;
   displayName: string;
+  displayNameColor: string;
 }
 
 export interface SyncSession {
@@ -78,9 +81,11 @@ export interface SyncSessionChatMessage {
 
 export interface SyncSessionStateChatMessage {
   member: "system" | string;
+  displayNameColor: string;
   message: string;
   newerThan5Secs: boolean;
   index: number;
+  time: Date;
 }
 
 export interface SyncSessionSendChatMessage {
@@ -128,6 +133,14 @@ export const useSyncStore = defineStore("sync", {
       return (index: number): string => {
         return (
           state.session?.members.find((it) => it.index == index)?.displayName ??
+          "Unknown"
+        );
+      };
+    },
+    getDisplayNameColorForUser: (state) => {
+      return (index: number): string => {
+        return (
+          state.session?.members.find((it) => it.index == index)?.displayNameColor ??
           "Unknown"
         );
       };
@@ -216,8 +229,10 @@ export const useSyncStore = defineStore("sync", {
             ? "system"
             : this.getDisplayNameForUser(message.member),
         message: message.message,
+        displayNameColor: message.member !== "system" ? this.getDisplayNameColorForUser(message.member) : "lightgray",
         newerThan5Secs: true,
         index: this.chatIndex++,
+        time: new Date(),
       };
       this.$patch((state) => {
         state.chat.push(obj);
@@ -404,24 +419,28 @@ export const useSyncStore = defineStore("sync", {
 
 export async function joinRoom(
   room: string,
-  displayName: string
+  displayName: string,
+  displayNameColor: string
 ): Promise<string | SyncSession> {
   const joinRequest = {
     type: "join",
     room,
     displayName,
+    displayNameColor
   } as JoinRoomRequest;
   return await connect(joinRequest);
 }
 
 export async function createRoom(
   jellyfinHost: string,
-  displayName: string
+  displayName: string,
+  displayNameColor: string,
 ): Promise<string | SyncSession> {
   const createRequest = {
     type: "create",
     jellyfinHost,
     displayName,
+    displayNameColor,
   } as CreateRoomRequest;
   return await connect(createRequest);
 }

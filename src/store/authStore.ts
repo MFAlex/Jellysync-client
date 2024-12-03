@@ -14,6 +14,7 @@ export interface ServerCredentials {
 export const useAuthStore = defineStore("auth", {
   state: () => ({
     displayName: loadDisplayName(),
+    displayNameColor: loadDisplayNameColor(),
     servers: loadServers(),
     apiSessions: {} as Record<string, Api>, //public address -> Api
     audioPreference: loadAudioPreference(),
@@ -77,6 +78,11 @@ export const useAuthStore = defineStore("auth", {
       this.displayName = it;
       saveDisplayName(it);
     },
+    setDisplayNameColor(to: string) {
+      const it = to === "" ? null : to;
+      this.displayNameColor = it;
+      saveDisplayNameColor(it);
+    },
     setTrackPreferences(audioPreference: AudioPreference, subsPreference: SubtitlePreference) {
       this.$patch((state) => {
         state.audioPreference = audioPreference;
@@ -115,6 +121,19 @@ function saveDisplayName(name: string | null) {
     localStorage.removeItem("jellysync_displayName");
   } else {
     localStorage.setItem("jellysync_displayName", name);
+  }
+}
+
+function loadDisplayNameColor(): string | null {
+  const color = localStorage.getItem("jellysync_displayNameColor");
+  return color;
+}
+
+function saveDisplayNameColor(color: string | null) {
+  if (color == null) {
+    localStorage.removeItem("jellysync_displayNameColor");
+  } else {
+    localStorage.setItem("jellysync_displayNameColor", color);
   }
 }
 

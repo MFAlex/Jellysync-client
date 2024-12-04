@@ -330,10 +330,6 @@ export default {
   flex-direction: column-reverse;
 }
 
-.background-tint {
-  background: rgba(0, 0, 0, 0.25)
-}
-
 /* width */
 ::-webkit-scrollbar {
   width: 15px;

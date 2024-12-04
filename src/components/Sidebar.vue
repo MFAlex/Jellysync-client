@@ -25,8 +25,7 @@
           </div>
           <div class="d-flex flex-column">
             <div>
-              <b class="mr-1">{{ user.displayName }}</b>
-
+              <b :style="findDisplayNameColor(user.displayName)" class="mr-1">{{ user.displayName }}</b>
               <v-tooltip text="Room leader" v-if="user.index == syncStore.session?.leader" location="top" offset="0">
                 <template v-slot:activator="{ props }">
                   <v-icon v-bind="props" icon="mdi-crown" size="small" style="cursor: pointer" />
@@ -46,15 +45,18 @@
     </div>
     <v-divider></v-divider>
     <div class="sidebar-heading">CHAT</div>
-    <div class="flex-grow-1 ml-2 chat-box justify-start flex-shrink-1">
+    <div class="flex-grow-1 ml-2 chat-box justify-start flex-shrink-1"
+      :style="isUsingFirefox ? 'scrollbar-color: #8830da #673AB7' : ''">
       <ul>
         <li v-for="(message, index) in syncStore.chat" :key="index"
           :class="message.member === 'system' ? 'chat-msg-system' : 'chat-msg'">
-          <span style="color: lightgray; margin-right: 5px; font-size:x-small;">{{ message.time.getHours() }}:{{
-            message.time.getMinutes() }}</span>
-          <span :style="findDisplayNameColor(message.member)" v-if="message.member !== 'system'" class="chat-msg-sender">{{
-            message.member
-          }} </span>{{ message.message }}
+          <span style="color: lightgray; margin-right: 5px; font-size:x-small;">{{ message.time.getHours() }}:
+            {{ message.time.getMinutes().toString().length < 2 ? '0' + message.time.getMinutes() :
+              message.time.getMinutes() }}</span>
+              <span :style="findDisplayNameColor(message.member)" v-if="message.member !== 'system'"
+                class="chat-msg-sender">{{
+                  message.member
+                }} </span>{{ message.message }}
         </li>
       </ul>
     </div>
@@ -102,8 +104,7 @@
           </div>
           <div class="d-flex flex-column">
             <div>
-              <b class="mr-1">{{ user.displayName }}</b>
-
+              <b :style="findDisplayNameColor(user.displayName)" class="mr-1">{{ user.displayName }}</b>
               <v-tooltip text="Room leader" v-if="user.index == syncStore.session?.leader" location="top" offset="0">
                 <template v-slot:activator="{ props }">
                   <v-icon v-bind="props" icon="mdi-crown" size="small" style="cursor: pointer" />
@@ -121,18 +122,25 @@
         </div>
       </v-slide-x-reverse-transition>
     </div>
-    <div class="flex-grow-1 ml-2 chat-box justify-start flex-shrink-1">
-      <ul>
-        <li v-for="(message, index) in syncStore.chat" :key="index"
-          :class="message.member === 'system' ? 'chat-msg-system' : 'chat-msg'">
-          <span style="color: lightgray; margin-right: 5px; font-size:x-small;">{{ message.time.getHours() }}:{{
-            message.time.getMinutes() }}</span>
-          <span :style="findDisplayNameColor(message.member)" v-if="message.member !== 'system'" class="chat-msg-sender">{{
-            message.member
-          }} </span>{{ message.message }}
-        </li>
-      </ul>
-    </div>
+    <v-slide-x-reverse-transition>
+      <div :class="'flex-grow-1 chat-box justify-start flex-shrink-1 fade-in-bg' + (showingDock ? ' floating-bg' : '')"
+        :style="isUsingFirefox ? 'scrollbar-color: #8830da #673AB7' : ''">
+        <ul>
+            <li v-for="(message, index) in syncStore.chat" :key="index"
+              :class="message.member === 'system' ? 'chat-msg-system' : 'chat-msg'">
+              <div v-if="message.newerThan5Secs || showingDock">
+                <span style="color: lightgray; margin-right: 5px; font-size:x-small;">{{ message.time.getHours() }}:
+                  {{ message.time.getMinutes().toString().length < 2 ? '0' + message.time.getMinutes() :
+                    message.time.getMinutes() }}</span>
+                    <span :style="findDisplayNameColor(message.member)" v-if="message.member !== 'system'"
+                      class="chat-msg-sender">{{
+                        message.member
+                      }} </span>{{ message.message }}
+              </div>
+            </li>
+        </ul>
+      </div>
+    </v-slide-x-reverse-transition>
     <div style="min-height: 64px;" :class="'pa-1 pt-2 fade-in-bg' + (showingDock ? ' floating-bg' : '')">
       <v-slide-x-reverse-transition>
         <v-textarea style="min-height: 48px" placeholder="Message" hide-details variant="outlined" flat auto-grow
@@ -154,6 +162,7 @@ export default {
       syncStore: useSyncStore(),
       chatMessage: "",
       showingDock: false,
+      isUsingFirefox: false,
     };
   },
   methods: {
@@ -204,7 +213,7 @@ export default {
       this.chatMessage = "";
     },
     findDisplayNameColor(member: string) {
-      return {color: this.syncStore.session?.members.find((it) => it.displayName == member)?.displayNameColor};
+      return { color: this.syncStore.session?.members.find((it) => it.displayName == member)?.displayNameColor };
     },
     toggleSidebar(event: KeyboardEvent) {
       if (this.pinned) return;
@@ -240,6 +249,9 @@ export default {
     },
   },
   mounted() {
+    if (navigator.userAgent.includes('Firefox')) {
+      this.isUsingFirefox = true;
+    }
     document.addEventListener("keydown", this.toggleSidebar);
   },
   unmounted() {
@@ -308,13 +320,18 @@ export default {
 
 .chat-msg-sender {
   font-weight: bold;
-  padding-right: 12px
+  padding-right: 6px
 }
 
 .chat-box {
   overflow-y: scroll;
   display: flex;
+  overflow-wrap: break-word;
   flex-direction: column-reverse;
+}
+
+.background-tint {
+  background: rgba(0, 0, 0, 0.25)
 }
 
 /* width */

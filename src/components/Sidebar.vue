@@ -51,8 +51,7 @@
         <li v-for="(message, index) in syncStore.chat" :key="index"
           :class="message.member === 'system' ? 'chat-msg-system' : 'chat-msg'">
           <span style="color: lightgray; margin-right: 5px; font-size:x-small;">{{ message.time.getHours() }}:
-            {{ message.time.getMinutes().toString().length < 2 ? '0' + message.time.getMinutes() :
-              message.time.getMinutes() }}</span>
+            {{ message.time.getMinutes().toString().padStart(2, '0') }}</span>
               <span :style="findDisplayNameColor(message.member)" v-if="message.member !== 'system'"
                 class="chat-msg-sender">{{
                   message.member
@@ -122,25 +121,24 @@
         </div>
       </v-slide-x-reverse-transition>
     </div>
-    <v-slide-x-reverse-transition>
-      <div :class="'flex-grow-1 chat-box justify-start flex-shrink-1 fade-in-bg' + (showingDock ? ' floating-bg' : '')"
-        :style="isUsingFirefox ? 'scrollbar-color: #8830da #673AB7' : ''">
-        <ul>
-            <li v-for="(message, index) in syncStore.chat" :key="index"
-              :class="message.member === 'system' ? 'chat-msg-system' : 'chat-msg'">
-              <div v-if="message.newerThan5Secs || showingDock">
-                <span style="color: lightgray; margin-right: 5px; font-size:x-small;">{{ message.time.getHours() }}:
-                  {{ message.time.getMinutes().toString().length < 2 ? '0' + message.time.getMinutes() :
-                    message.time.getMinutes() }}</span>
-                    <span :style="findDisplayNameColor(message.member)" v-if="message.member !== 'system'"
-                      class="chat-msg-sender">{{
-                        message.member
-                      }} </span>{{ message.message }}
-              </div>
-            </li>
-        </ul>
-      </div>
-    </v-slide-x-reverse-transition>
+    <div :class="'flex-grow-1 chat-box justify-start flex-shrink-1 fade-in-bg' + (showingDock ? ' floating-bg' : '')"
+      :style="isUsingFirefox ? 'scrollbar-color: #8830da #673AB7' : ''">
+      <ul>
+        <li v-for="(message, index) in syncStore.chat" :key="index"
+          :class="message.member === 'system' ? 'chat-msg-system' : 'chat-msg'">
+          <v-slide-x-reverse-transition>
+            <div v-if="message.newerThan5Secs || showingDock">
+              <span style="color: lightgray; margin-right: 5px; font-size:x-small;">{{ message.time.getHours() }}:
+                {{ message.time.getMinutes().toString().padStart(2, '0') }}</span>
+                  <span :style="findDisplayNameColor(message.member)" v-if="message.member !== 'system'"
+                    class="chat-msg-sender">{{
+                      message.member
+                    }} </span>{{ message.message }}
+            </div>
+          </v-slide-x-reverse-transition>
+        </li>
+      </ul>
+    </div>
     <div style="min-height: 64px;" :class="'pa-1 pt-2 fade-in-bg' + (showingDock ? ' floating-bg' : '')">
       <v-slide-x-reverse-transition>
         <v-textarea style="min-height: 48px" placeholder="Message" hide-details variant="outlined" flat auto-grow
@@ -247,11 +245,11 @@ export default {
         this.authStore.setSidebarPreference(val);
       },
     },
+    isUsingFirefox() {
+      return navigator.userAgent.includes('Firefox');
+    },
   },
   mounted() {
-    if (navigator.userAgent.includes('Firefox')) {
-      this.isUsingFirefox = true;
-    }
     document.addEventListener("keydown", this.toggleSidebar);
   },
   unmounted() {
@@ -325,6 +323,7 @@ export default {
 
 .chat-box {
   overflow-y: scroll;
+  overflow-x: hidden;
   display: flex;
   overflow-wrap: break-word;
   flex-direction: column-reverse;

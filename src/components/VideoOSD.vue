@@ -19,7 +19,7 @@
       </div>
       <div id="video-osd-bottom-shadow" />
       <div id="video-osd-bottom">
-        <div class="d-flex flex-row align-center">
+        <div class="d-flex flex-row align-center ml-2">
           <div style="width: 52px; height: 52px" class="justify-center">
             <v-progress-circular
               v-if="syncStore.playbackState === 'buffering'"
@@ -36,6 +36,15 @@
               size="x-large"
               variant="text"
               @click="syncStore.togglePlay()"
+            />
+          </div>
+          <div style="width: 52px; height: 52px" class="justify-center ml-4 mr-4">
+            <v-btn
+              icon="mdi-stop"
+              density="comfortable"
+              size="x-large"
+              variant="text"
+              @click="syncStore.stopPlayback()"
             />
           </div>
           <div
@@ -360,7 +369,7 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 80px;
+  height: 90px;
   display: block;
   padding: 16px;
 }

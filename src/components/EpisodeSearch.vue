@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex flex-row ma-4">
-    <v-card class="flex-grow-1 overflowable">
+    <v-card class="flex-grow-1 overflowable flex-shrink-1">
       <v-text-field
         placeholder="Search for media"
         v-model="currentSearch"
@@ -18,6 +18,7 @@
           currentT2 = null;
           currentT3 = null;
         "
+        @keyup.enter="selectFirst()"
       />
       <v-list lines="two">
         <v-list-item
@@ -35,7 +36,7 @@
         />
       </v-list>
     </v-card>
-    <v-card v-if="searchResultsT2 != null" class="ml-2 flex-grow-1 overflowable">
+    <v-card v-if="searchResultsT2 != null" class="ml-2 flex-grow-1 overflowable flex-shrink-1">
       <v-card-title>{{ currentT2?.Name }}</v-card-title>
       <v-list lines="one">
         <v-list-item
@@ -52,7 +53,7 @@
         />
       </v-list>
     </v-card>
-    <v-card v-if="searchResultsT3 != null" class="ml-2 flex-grow-1 overflowable">
+    <v-card v-if="searchResultsT3 != null" class="ml-2 flex-grow-1 overflowable flex-shrink-0">
       <v-card-title>{{ currentT3?.Name }}</v-card-title>
       <v-list lines="two">
         <v-list-item
@@ -67,7 +68,15 @@
           :subtitle="item.SeasonName + ' Episode ' + item.IndexNumber"
           @click="play(item.Id)"
           :color="item.Id === currentT3?.Id ? 'primary' : 'white'"
-        />
+        >
+          <template #append>
+            <v-tooltip text="Watched" v-if="item.UserData.Played" location="top">
+              <template v-slot:activator="{ props }">
+                <v-icon v-bind="props" color="primary">mdi-check-circle</v-icon>
+              </template>
+            </v-tooltip>
+          </template>
+        </v-list-item>
       </v-list>
     </v-card>
   </div>
@@ -88,6 +97,7 @@ import {
 } from "@/jellyfin/library-lookup";
 
 export default {
+  emits: ["search"],
   data() {
     return {
       authStore: useAuthStore(),
@@ -106,6 +116,7 @@ export default {
   },
   methods: {
     async search(term: string) {
+      this.$emit("search");
       if (this.server == null) return;
       this.isSearching = true;
       this.searchResultsT2 = null;
@@ -156,6 +167,10 @@ export default {
         const resultsModel = results.filter((it) => isEpisode(it));
         this.searchResultsT3 = resultsModel;
       }
+    },
+    selectFirst() {
+      if (this.searchResultsT1 == null || this.searchResultsT1.length == 0) return;
+      this.searchT2(this.searchResultsT1[0]);
     },
     play(mediaId: string) {
       this.syncStore.leaderChangeMedia(mediaId);

@@ -85,7 +85,7 @@ export async function getItemPlaybackInfo(
 export function getVideoPlaybackUrl(
   mediaSource: MediaSourceInfo,
   server: ServerCredentials
-): {url: string, type: string} | undefined {
+): {url: string, type: string, transcode: boolean} | undefined {
   if (
     mediaSource?.SupportsDirectStream &&
     mediaSource.Type &&
@@ -103,13 +103,13 @@ export function getVideoPlaybackUrl(
 
     const parameters = new URLSearchParams(directOptions).toString();
 
-    return {url: `${server.publicAddress}/Videos/${mediaSource.Id}/stream.${mediaSource.Container}?${parameters}`, type: 'video/'+mediaSource.Container};
+    return {url: `${server.publicAddress}/Videos/${mediaSource.Id}/stream.${mediaSource.Container}?${parameters}`, type: 'video/'+mediaSource.Container, transcode: false};
   } else if (
     server !== undefined &&
     mediaSource?.SupportsTranscoding &&
     mediaSource.TranscodingUrl
   ) {
-    return {url: `${server.publicAddress}${mediaSource.TranscodingUrl}`, type: "application/x-mpegURL"};
+    return {url: `${server.publicAddress}${mediaSource.TranscodingUrl}`, type: "application/x-mpegURL", transcode: true};
   }
 }
 

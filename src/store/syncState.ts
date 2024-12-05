@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { useAuthStore } from "./authStore";
 import { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 import { AudioEntry, SubtitleEntry } from "@/jellyfin/playback-urls";
+import { informPlaybackWatched, informPlaybackStarting, informPlaybackState, informPlaybackFinished } from "@/jellyfin/jellyfin-playback-state";
 
 export const websocketUrl = import.meta.env.VITE_JELLYSYNC_SERVER_URL as string;
 
@@ -11,7 +12,7 @@ export type PlayingState =
   | "buffering"
   | "nothing-playing";
 
-export interface SyncSessionMember { 
+export interface SyncSessionMember {
   index: number;
   displayName: string;
   displayNameColor: string;
@@ -110,6 +111,8 @@ export const useSyncStore = defineStore("sync", {
     playbackAudioTrack: -1,
     playbackSubtitleTrack: -1,
     playerVolume: 1.0,
+    playerIsTranscoding: false,
+    playerJellyfinPlaybackSessionId: null as null | string,
     lastPlayed: null as null | BaseItemDto,
 
     serverPlaybackTimestamp: null as null | number, //when the server requests to change timestamp
@@ -118,6 +121,7 @@ export const useSyncStore = defineStore("sync", {
     connectedPublicAddress: null as null | string,
     chatSequence: 0,
     mediaAnnounceInterval: null as null | NodeJS.Timeout,
+    jellyfinMediaAnnounceInterval: null as null | number,
     trafficTimeout: null as null | NodeJS.Timeout,
     mediaDetails: null as null | BaseItemDto,
     mediaSubtitleDetails: null as null | SubtitleEntry[],
@@ -151,7 +155,10 @@ export const useSyncStore = defineStore("sync", {
       if (this.socket != null) this.socket.close();
       if (this.trafficTimeout != null) clearTimeout(this.trafficTimeout);
       if (this.mediaAnnounceInterval != null)
-        clearInterval(this.mediaAnnounceInterval);
+        clearTimeout(this.mediaAnnounceInterval);
+      if (this.jellyfinMediaAnnounceInterval != null) {
+        clearInterval(this.jellyfinMediaAnnounceInterval);
+      }
       this.$patch((state) => {
         state.session = null;
         state.socket = null;
@@ -162,6 +169,7 @@ export const useSyncStore = defineStore("sync", {
         state.playbackStates = [];
         state.trafficTimeout = null;
         state.mediaAnnounceInterval = null;
+        state.jellyfinMediaAnnounceInterval = null;
         state.serverIndex = -1;
         state.playbackDuration = null;
         state.playbackAudioTrack = -1;
@@ -192,6 +200,9 @@ export const useSyncStore = defineStore("sync", {
       });
       this.onReceivedPing();
       this.announceMediaStatus();
+      this.jellyfinMediaAnnounceInterval = setInterval(() => {
+        informPlaybackState();
+      }, 5000, 5000);
     },
     updateMembers(newMembers: SyncSessionMember[]) {
       this.$patch((state) => {
@@ -306,10 +317,18 @@ export const useSyncStore = defineStore("sync", {
         if (this.playbackState == "nothing-playing") {
           this.playbackState = "buffering";
           this.announceMediaStatus();
+          informPlaybackState();
         }
+      } else {
+        this.serverPlaybackState = "nothing-playing";
       }
     },
     vJSPlaybackEnded() {
+      if (this.playbackDuration != null && this.playbackTimestamp != null && this.playbackDuration - this.playbackTimestamp < 5) {
+        //if there's less than 5 seconds left in the episode, mark it as played
+        informPlaybackWatched();
+      }
+      informPlaybackFinished();
       this.$patch((state) => {
         state.playbackState = "nothing-playing";
         state.serverPlaybackState = "nothing-playing";
@@ -331,8 +350,10 @@ export const useSyncStore = defineStore("sync", {
         state.playbackTimestamp = currentTime;
         if (canPlay && this.playbackState == "buffering") {
           state.playbackState = "paused";
+          informPlaybackState();
         } else if (!canPlay && this.playbackState == "playing") {
           state.playbackState = "buffering";
+          informPlaybackState();
         }
       });
       this.announceMediaStatus();
@@ -345,6 +366,7 @@ export const useSyncStore = defineStore("sync", {
     vJSBuffering() {
       this.$patch((state) => {
         state.playbackState = "buffering";
+        informPlaybackState();
       });
       this.announceMediaStatus();
     },
@@ -367,6 +389,7 @@ export const useSyncStore = defineStore("sync", {
     vJSPlayState(newState: PlayingState) {
       this.$patch((state) => {
         state.playbackState = newState;
+        informPlaybackState();
       });
       this.announceMediaStatus();
     },
@@ -402,11 +425,13 @@ export const useSyncStore = defineStore("sync", {
       this.$patch((state) => {
         state.playbackAudioTrack = index;
       });
+      informPlaybackState();
     },
     setSubtitleTrack(index: number) {
       this.$patch((state) => {
         state.playbackSubtitleTrack = index;
       });
+      informPlaybackState();
     },
     setVolume(percent: number) {
       /*0.0 - 1.0*/
@@ -414,6 +439,30 @@ export const useSyncStore = defineStore("sync", {
         state.playerVolume = percent;
       });
     },
+    setTranscoding(transcoding: boolean) {
+      this.$patch((state) => {
+        state.playerIsTranscoding = transcoding;
+      })
+    },
+    setJellyfinPlaybackSessionId(session: string) {
+      this.$patch((state) => {
+        state.playerJellyfinPlaybackSessionId = session;
+      });
+      informPlaybackStarting();
+    },
+    stopPlayback() {
+      //stops it for everyone
+      this.$patch((state) => {
+        state.playbackState = "nothing-playing";
+        state.serverPlaybackState = "nothing-playing";
+      });
+      const packet = {
+        type: "change-playback-state",
+        state: "nothing-playing"
+      } as any;
+      this.socket?.send(JSON.stringify(packet));
+      informPlaybackFinished();
+    }
   },
 });
 

@@ -50,8 +50,7 @@
       <ul>
         <li v-for="(message, index) in syncStore.chat" :key="index"
           :class="message.member === 'system' ? 'chat-msg-system' : 'chat-msg'">
-          <span style="color: lightgray; margin-right: 5px; font-size:x-small;">{{ message.time.getHours() }}:
-            {{ message.time.getMinutes().toString().padStart(2, '0') }}</span>
+          <span style="color: lightgray; margin-right: 5px; font-size:x-small; font-style: normal; font-family: monospace;">{{ message.time.getHours().toString().padStart(2, "0") + ":" + message.time.getMinutes().toString().padStart(2, "0")}}</span>
               <span :style="findDisplayNameColor(message.member)" v-if="message.member !== 'system'"
                 class="chat-msg-sender">{{
                   message.member
@@ -128,8 +127,7 @@
           :class="message.member === 'system' ? 'chat-msg-system' : 'chat-msg'">
           <v-slide-x-reverse-transition>
             <div v-if="message.newerThan5Secs || showingDock">
-              <span style="color: lightgray; margin-right: 5px; font-size:x-small;">{{ message.time.getHours() }}:
-                {{ message.time.getMinutes().toString().padStart(2, '0') }}</span>
+              <span style="color: lightgray; margin-right: 5px; font-size:x-small; font-style: normal; font-family: monospace;">{{ message.time.getHours().toString().padStart(2, "0") + ":" + message.time.getMinutes().toString().padStart(2, "0")}}</span>
                   <span :style="findDisplayNameColor(message.member)" v-if="message.member !== 'system'"
                     class="chat-msg-sender">{{
                       message.member

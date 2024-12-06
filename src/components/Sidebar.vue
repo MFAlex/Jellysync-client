@@ -12,7 +12,6 @@
         </template>
       </v-tooltip>
     </v-sheet>
-    <div class="sidebar-heading">USERS</div>
     <div>
       <v-expand-transition group>
         <div v-for="user in syncStore.session?.members" :key="user.index" class="user d-flex flex-row align-center">
@@ -44,7 +43,6 @@
       </v-expand-transition>
     </div>
     <v-divider></v-divider>
-    <div class="sidebar-heading">CHAT</div>
     <div class="flex-grow-1 ml-2 chat-box justify-start flex-shrink-1"
       :style="isUsingFirefox ? 'scrollbar-color: #8830da #673AB7' : ''">
       <ul>
@@ -256,20 +254,14 @@ export default {
 };
 </script>
 <style scoped>
-.sidebar-heading {
-  height: 20px;
-  font-weight: 500;
-  font-size: 14px;
-  padding-left: 8px;
-  padding-top: 2px;
-}
-
 .sidebar-docked {
   width: 360px;
   height: 100vh;
   background: linear-gradient(60deg,
       rgba(165, 94, 196, 1) 0%,
       rgba(2, 163, 220, 1) 100%);
+  position: relative;
+  z-index: 32;
 }
 
 .sidebar-undocked {

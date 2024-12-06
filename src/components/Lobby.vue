@@ -19,12 +19,14 @@
     <div style="flex-direction: column; display: flex; justify-content: center; align-items: center;">
       <span class="text-h5 mb-2">{{ lastPlayed.SeriesName }}</span>
       <table>
-        <tr>
-          <td>Just Watched</td><td class="pl-4">{{ lastPlayed.SeasonName }}, Episode {{ lastPlayed.IndexNumber }} - {{lastPlayed.Name}}</td>
-        </tr>
-        <tr>
-          <td>Next Episode</td><td class="pl-4 text-primary">{{ nextEpisode.SeasonName }}, Episode {{ nextEpisode.IndexNumber }} - {{nextEpisode.Name}}</td>
-        </tr>
+        <tbody>
+          <tr>
+            <td>Just Watched</td><td class="pl-4">{{ lastPlayed.SeasonName }}, Episode {{ lastPlayed.IndexNumber }} - {{lastPlayed.Name}}</td>
+          </tr>
+          <tr>
+            <td>Next Episode</td><td class="pl-4 text-primary">{{ nextEpisode.SeasonName }}, Episode {{ nextEpisode.IndexNumber }} - {{nextEpisode.Name}}</td>
+          </tr>
+        </tbody>
       </table>
       <div>
         <v-btn color="white" prepend-icon="mdi-keyboard-return" style="margin-top: 15px" variant="plain" class="mr-2"

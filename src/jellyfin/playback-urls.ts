@@ -46,7 +46,8 @@ export async function resolveItemId(
           userId: server.userId,
           ids: [itemId],
           enableImages: false,
-          enableUserData: false
+          enableUserData: false,
+          fields: ["Chapters"]
         })
       ).data;
       if (data.Items && data.Items.length == 1) {

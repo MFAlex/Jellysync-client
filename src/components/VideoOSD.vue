@@ -3,24 +3,46 @@
     <div id="video-osd-relative-container">
       <div id="video-osd-top-shadow" />
       <div id="video-osd-top">
-        {{ syncStore.mediaDetails?.Name ?? "Unknown video title" }}
-        <div
-          v-if="
-            syncStore.mediaDetails?.SeriesName != null &&
-            syncStore.mediaDetails?.SeasonName != null &&
-            syncStore.mediaDetails?.IndexNumber != null
-          "
-          style="font-size: 12px"
-        >
-          {{ syncStore.mediaDetails.SeriesName }} -
-          {{ syncStore.mediaDetails.SeasonName }} Episode
-          {{ syncStore.mediaDetails.IndexNumber }}
+        <div class="d-flex flex-row align-center">
+          <v-tooltip
+            text="Return everyone to lobby"
+            location="bottom"
+            offset="5"
+          >
+            <template v-slot:activator="{ props }">
+              <v-btn
+                icon="mdi-keyboard-return"
+                density="comfortable"
+                size="x-large"
+                variant="text"
+                @click="syncStore.stopPlayback()"
+                class="mr-3"
+                v-bind="props"
+              />
+            </template>
+          </v-tooltip>
+
+          <div>
+            {{ syncStore.mediaDetails?.Name ?? "Unknown video title" }}
+            <div
+              v-if="
+                syncStore.mediaDetails?.SeriesName != null &&
+                syncStore.mediaDetails?.SeasonName != null &&
+                syncStore.mediaDetails?.IndexNumber != null
+              "
+              style="font-size: 12px"
+            >
+              {{ syncStore.mediaDetails.SeriesName }} -
+              {{ syncStore.mediaDetails.SeasonName }} Episode
+              {{ syncStore.mediaDetails.IndexNumber }}
+            </div>
+          </div>
         </div>
       </div>
       <div id="video-osd-bottom-shadow" />
       <div id="video-osd-bottom">
-        <div class="d-flex flex-row align-center">
-          <div style="width: 52px; height: 52px" class="justify-center">
+        <div class="d-flex flex-row align-center ml-2">
+          <div style="width: 52px; height: 52px" class="justify-center mr-2">
             <v-progress-circular
               v-if="syncStore.playbackState === 'buffering'"
               indeterminate
@@ -41,10 +63,6 @@
           <div
             id="seekbarContainer"
             class="flex-grow-1 flex-shrink-1"
-            v-if="
-              syncStore.playbackDuration != null &&
-              syncStore.playbackTimestamp != null
-            "
             @mouseover="showingSeekbarLabel = true"
             @mouseleave="showingSeekbarLabel = false"
             @mousemove="sliderHint($event)"
@@ -56,6 +74,7 @@
                 id="seekbarLabel"
                 v-show="showingSeekbarLabel || mouseDownOnSeekbar"
               />
+              <div id="chapterMarkers"></div>
               <div id="seekbarDot" />
             </div>
           </div>
@@ -187,7 +206,9 @@ export default {
   },
   methods: {
     showOsd() {
-      document.getElementById("video-osd")!!.style.opacity = "1";
+      const element = document.getElementById("video-osd");
+      if (!element) return;
+      element.style.opacity = "1";
       if (this.hideOsdTimeout != null) {
         clearTimeout(this.hideOsdTimeout);
       }
@@ -196,7 +217,9 @@ export default {
       }, 3000);
     },
     hideOsd() {
-      document.getElementById("video-osd")!!.style.opacity = "0";
+      const element = document.getElementById("video-osd");
+      if (element)
+        element.style.opacity = "0";
     },
     formatTime(timestamp: number): string {
       let hours = Math.floor(timestamp / 3600);
@@ -226,7 +249,15 @@ export default {
         Math.max(0.0, (x - sliderX) / width)
       );
       seekbarLabel.style.left = width * playPercentage - 40 + "px";
-      seekbarLabel.innerHTML = this.formatTime(playPercentage * duration);
+      const timeSecs = playPercentage * duration;
+      const chapterName = this.chapterNameAt(timeSecs);
+      if (chapterName != null) {
+        seekbarLabel.innerHTML =
+          "<code>" + this.formatTime(timeSecs) + "</code><br>" + chapterName;
+      } else {
+        seekbarLabel.innerHTML =
+          "<code>" + this.formatTime(timeSecs) + "</code>";
+      }
 
       if (this.mouseDownOnSeekbar) {
         this.updateSeekbar(playPercentage);
@@ -275,6 +306,50 @@ export default {
       const seekbarWidth = seekbar.offsetWidth;
       dot.style.left = Math.round(playbackPercent * seekbarWidth) - 4 + "px";
     },
+    chapterNameAt(timestampSecs: number): string | null {
+      const baseItem = this.syncStore.mediaDetails;
+      if (baseItem == null || baseItem.Chapters == null) return null;
+      let name = null as null | string;
+      let bestTime = -1;
+      for (let chapter of baseItem.Chapters) {
+        if (
+          chapter.StartPositionTicks != null &&
+          chapter.StartPositionTicks / 10000000 <= timestampSecs
+        ) {
+          if (bestTime < chapter.StartPositionTicks) {
+            bestTime = chapter.StartPositionTicks;
+            name = chapter.Name ?? null;
+          }
+        }
+      }
+      return name;
+    },
+    updateChapterMarkers() {
+      const div = document.getElementById("chapterMarkers");
+      const seekbar = document.getElementById("seekbar");
+      if (div == null || seekbar == null) return;
+      const baseItem = this.syncStore.mediaDetails;
+      if (baseItem == null || baseItem.Chapters == null) return;
+
+      div.innerHTML = "";
+
+      const seekbarWidth = seekbar.offsetWidth;
+      const duration = this.syncStore.playbackDuration;
+
+      if (duration == null) return;
+
+      for (let chapter of baseItem.Chapters) {
+        if (
+          chapter.StartPositionTicks != null
+        ) {
+          const posSecs = chapter.StartPositionTicks / 10000000;
+          const posPercent = posSecs / duration;
+          const posX = posPercent * seekbarWidth;
+          if (posX == 0) continue;
+          div.innerHTML += "<div class='chapterMarker' style='left: "+posX+"px;' />";
+        }
+      }
+    }
   },
   computed: {
     videoTime() {
@@ -304,12 +379,29 @@ export default {
         this.syncStore.setVolume(val);
       },
     },
+    chapterMarkers() {
+      return this.syncStore.mediaDetails;
+    },
+    duration() {
+      return this.syncStore.playbackDuration;
+    }
   },
   watch: {
     videoTime() {
       this.updateSeekbar();
     },
+    chapterMarkers() {
+      this.updateChapterMarkers();
+    },
+    duration() {
+      this.updateChapterMarkers();
+    }
   },
+  mounted() {
+    this.$nextTick(() => {
+      this.updateChapterMarkers();
+    })
+  }
 };
 </script>
 <style scoped>
@@ -360,19 +452,18 @@ export default {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 80px;
+  height: 90px;
   display: block;
   padding: 16px;
 }
 #seekbarLabel {
   position: absolute;
-  bottom: 10px;
+  bottom: 15px;
   text-align: center;
   background-color: black;
   padding-top: 6px;
   padding-bottom: 6px;
-  width: 80px;
-  font-family: monospace;
+  min-width: 80px;
 }
 #seekbar {
   width: 100%;
@@ -397,5 +488,18 @@ export default {
   position: relative;
   top: -4px;
   left: -4px;
+  z-index: 34;
+}
+</style>
+<!--Without 'scoped' because these are elements made at runtime with JS-->
+<style>
+.chapterMarker {
+  width: 1px;
+  height: 10px;
+  background-color: rgba(255, 255, 255, 0.6);
+  position: absolute;
+  top: -3px;
+  display: block;
+  z-index: 33;
 }
 </style>

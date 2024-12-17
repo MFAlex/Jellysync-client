@@ -14,15 +14,30 @@
     </v-text-field>
   </div>
 
-  <EpisodeSearch v-if="isLeader" />
+  <EpisodeSearch v-if="isLeader" @search="nextEpisode = undefined" />
   <div class="next-ep-section" v-if="isLeader && lastPlayed && nextEpisode">
     <div style="flex-direction: column; display: flex; justify-content: center; align-items: center;">
-      Just finished {{ lastPlayed.SeriesName }} {{ lastPlayed.SeasonName }} Episode {{ lastPlayed.IndexNumber }}. Play
-      next episode?
-      <v-btn color="primary" append-icon="mdi-arrow-right-thick" style="margin-top: 15px"
-        @click="playNextEp(lastPlayed)">
-        {{ nextEpisode.SeriesName }} {{ nextEpisode.SeasonName }} Episode {{ nextEpisode.IndexNumber }}
-      </v-btn>
+      <span class="text-h5 mb-2">{{ lastPlayed.SeriesName }}</span>
+      <table>
+        <tbody>
+          <tr>
+            <td>Just Watched</td><td class="pl-4">{{ lastPlayed.SeasonName }}, Episode {{ lastPlayed.IndexNumber }} - {{lastPlayed.Name}}</td>
+          </tr>
+          <tr>
+            <td>Next Episode</td><td class="pl-4 text-primary">{{ nextEpisode.SeasonName }}, Episode {{ nextEpisode.IndexNumber }} - {{nextEpisode.Name}}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div>
+        <v-btn color="white" prepend-icon="mdi-keyboard-return" style="margin-top: 15px" variant="plain" class="mr-2"
+          @click="rewatchEp(lastPlayed)">
+          Replay Episode
+        </v-btn>
+        <v-btn color="primary" prepend-icon="mdi-play" style="margin-top: 15px" variant="flat"
+          @click="playNextEp(lastPlayed)">
+          Next Episode
+        </v-btn>
+      </div>
     </div>
   </div>
 </template>
@@ -73,6 +88,10 @@ export default {
       if (nextEpisode?.Id) {
         this.syncStore.leaderChangeMedia(nextEpisode.Id);
       }
+    },
+    async rewatchEp(lastPlayed: BaseItemDto) {
+      if (lastPlayed?.Id)
+        this.syncStore.leaderChangeMedia(lastPlayed.Id);
     }
   },
   computed: {

@@ -149,12 +149,12 @@ export async function getNextEpisode(
           adjacentTo: episode.Id,
           enableUserData: false,
           enableImages: false,
-          startIndex: 2,
+          startIndex: 1,
           sortBy: "IndexNumber"
         })
       ).data;
       if (data.Items != null && Array.isArray(data.Items) && data.Items.length > 0) {
-        return data.Items[0];
+        return data.Items.filter(it => it.Id != episode.Id).at(-1);
       }
     } catch (err) {
       return undefined;

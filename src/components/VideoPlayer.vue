@@ -128,7 +128,7 @@ export default {
     async getPlaybackURL(
       item: BaseItemDto,
       audioTrackIndex: number
-    ): Promise<{url: string, type: string} | undefined> {
+    ): Promise<{url: string, type: string, transcode: boolean} | undefined> {
       if (this.server == null) return; //keeps typescript happy
 
       const playbackInfo = await getItemPlaybackInfo(
@@ -136,6 +136,11 @@ export default {
         audioTrackIndex,
         this.server
       );
+
+      if (playbackInfo?.PlaySessionId != null) {
+        this.syncState.setJellyfinPlaybackSessionId(playbackInfo.PlaySessionId);
+      }
+
       if (playbackInfo?.MediaSources) {
         const playbackUrl = getVideoPlaybackUrl(
           playbackInfo.MediaSources[0],
@@ -154,9 +159,8 @@ export default {
         return;
       }
 
-      this.playbackInfo =
-        (await this.getMediaPlaybackDetails(this.mediaDetails))
-          ?.MediaSources?.[0] ?? null;
+      const playbackInfo = await this.getMediaPlaybackDetails(this.mediaDetails);
+      this.playbackInfo = playbackInfo?.MediaSources?.[0] ?? null;
       if (this.playbackInfo == null) {
         console.log(`Item ${mediaId} does not appear to be playable`);
         return;
@@ -251,7 +255,7 @@ export default {
         console.error("No playback URL. Nothing to play.");
         return;
       }
-      
+
       this.syncState.setLastPlayed(mediaDetails);
 
       this.options.sources = [
@@ -260,6 +264,7 @@ export default {
           type: url.type,
         },
       ];
+      this.syncState.setTranscoding(url.transcode);
 
       await new Promise((resolve, _) => {
         this.player = videojs(videoElement, this.options, () => {
@@ -371,6 +376,8 @@ export default {
   },
   watch: {
     serverSaysPlay(newVal) {
+      if (this.syncState.serverPlaybackState === "nothing-playing") return;
+
       console.log(
         "Changing playing status to " + (newVal ? "playing" : "paused")
       );
@@ -419,7 +426,7 @@ export default {
         this.showSubtitles(this.subtitleTrack);
       }
     },
-    syncStateSubtitleTrack(newVal: number | null) { 
+    syncStateSubtitleTrack(newVal: number | null) {
       if (this.subtitleTrack != newVal && this.playbackInfo != null) {
         const subtitleTracks = getSubtitleDetails(this.playbackInfo);
         const subtitleEntry =

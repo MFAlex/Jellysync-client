@@ -122,7 +122,7 @@
       </v-slide-x-reverse-transition>
     </div>
     <div :class="'flex-grow-1 chat-box justify-start flex-shrink-1 fade-in-bg' + (showingDock ? ' floating-bg' : '')"
-      :style="isUsingFirefox ? 'scrollbar-color: #8830da #673AB7' : ''">
+      :style="isUsingFirefox ? 'scrollbar-color: #8830da #673AB7' : ''" id="undockedChatDiv">
       <ul>
         <li v-for="(message, index) in syncStore.chat" :key="index"
           :class="message.member === 'system' ? 'chat-msg-system' : 'chat-msg'">
@@ -248,6 +248,17 @@ export default {
     isUsingFirefox() {
       return navigator.userAgent.includes('Firefox');
     },
+    newMessageDetected() {
+      return this.syncStore.chat.some(msg => msg.newerThan5Secs === true);
+    },
+  },
+  watch: {
+    newMessageDetected() {
+      let undockedChatDiv = document.getElementById("undockedChatDiv");
+      if (undockedChatDiv) {
+        undockedChatDiv.scrollTop = undockedChatDiv.scrollHeight;
+      }
+    }
   },
   mounted() {
     document.addEventListener("keydown", this.toggleSidebar);

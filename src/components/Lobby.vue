@@ -1,15 +1,13 @@
 <template>
-  <v-sheet color="silver" style="height: 40px" elevation="2" class="pa-2 d-flex flex-row align-center">
-    <span class="text-h6 flex-grow-1">Nothing playing at the moment</span>
-  </v-sheet>
-
   <div class="d-flex flex-row align-center ml-4 mt-4">
     <span class="mr-2">Room ID</span>
     <v-text-field readonly :value="syncStore.session?.room" variant="outlined" hide-details
-      style="font-family: monospace; max-width: 360px;" density="comfortable">
+      style="font-family: monospace; max-width: 400px;" density="comfortable">
       <template #append-inner>
-        <v-btn icon="mdi-content-copy" density="comfortable" variant="plain" @click="copyURL"
-          :color="copyToClipboardStatus == 0 ? 'white' : (copyToClipboardStatus == 1 ? 'success' : 'error')" />
+        <v-btn icon="mdi-content-copy" density="comfortable" variant="plain" @click="copyCode"
+          :color="copyToClipboardStatus == 0 ? 'white' : (copyToClipboardStatus == 1 ? 'success' : 'error')" v-tooltip="'Copy room code'" />
+        <v-btn icon="mdi-link-variant" density="comfortable" variant="plain" @click="copyURL"
+          :color="copyUrlToClipboardStatus == 0 ? 'white' : (copyUrlToClipboardStatus == 1 ? 'success' : 'error')" v-tooltip="'Copy invite URL'" />
       </template>
     </v-text-field>
   </div>
@@ -40,6 +38,20 @@
       </div>
     </div>
   </div>
+  <div v-if="!isLeader">
+    <div style="flex-direction: column; display: flex; justify-content: center; align-items: center; margin-top: 64px;">
+      <div class="d-flex">
+        <v-img
+          src="/jellysync-logo.png"
+          width="84"
+          height="84"
+          class="mr-4"
+        />
+        <div class="text-h1"><b style="font-weight: 450">Jelly</b>Sync</div>
+      </div>
+      <div class="mt-8">Nothing playing. Waiting for the room leader to play something</div>
+    </div>
+  </div>
 </template>
 <script lang="ts">
 import { ServerCredentials, useAuthStore } from "@/store/authStore";
@@ -55,6 +67,7 @@ export default {
       syncStore: useSyncStore(),
       mediaHash: "",
       copyToClipboardStatus: 0,
+      copyUrlToClipboardStatus: 0,
       nextEpisode: undefined as BaseItemDto | undefined
     };
   },
@@ -64,7 +77,7 @@ export default {
       this.syncStore.leaderChangeMedia(mediaId);
       this.mediaHash = "";
     },
-    async copyURL() {
+    async copyCode() {
       const room = this.syncStore.session?.room;
       if (room == null) {
         this.copyToClipboardStatus = 2;
@@ -78,8 +91,26 @@ export default {
             this.copyToClipboardStatus = 0;
           }
         }, 2000);
-      } catch ($e) {
+      } catch (e) {
         this.copyToClipboardStatus = 2;
+      }
+    },
+    async copyURL() {
+      const room = this.syncStore.session?.room;
+      if (room == null) {
+        this.copyUrlToClipboardStatus = 2;
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(location.protocol + '//' + location.host + '/?room=' + room);
+        this.copyUrlToClipboardStatus = 1;
+        setTimeout(() => {
+          if (this.copyUrlToClipboardStatus == 1) {
+            this.copyUrlToClipboardStatus = 0;
+          }
+        }, 2000);
+      } catch (e) {
+        this.copyUrlToClipboardStatus = 2;
       }
     },
     async playNextEp(lastPlayed: BaseItemDto) {

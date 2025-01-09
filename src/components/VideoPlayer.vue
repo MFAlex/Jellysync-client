@@ -1,5 +1,8 @@
 <template>
-  <div style="width: 100%; height: 100%; position: relative" id="videoPlayerContainer">
+  <div
+    style="width: 100%; height: 100%; position: relative"
+    id="videoPlayerContainer"
+  >
     <VideoOSD />
   </div>
 </template>
@@ -88,19 +91,11 @@ export default {
     }
   },
   methods: {
-    updateBufferStatus() {
+    calculateBufferLength(): number {
       let bufferLength = 0;
       const currentTimestamp = this.player?.currentTime();
       const buffered = this.player?.buffered();
-      const duration = this.player?.duration();
-      const readyState = this.player?.readyState();
-      if (
-        buffered == null ||
-        currentTimestamp == null ||
-        duration == null ||
-        readyState == null
-      )
-        return;
+      if (buffered == null || currentTimestamp == null) return -1;
       for (let i = 0; i < buffered.length; i++) {
         var start = buffered.start(i);
         var end = buffered.end(i);
@@ -108,12 +103,26 @@ export default {
           bufferLength = end - currentTimestamp;
         }
       }
-      this.syncState.vJSBufferSecs(
-        bufferLength,
-        currentTimestamp,
-        this.subsReady && readyState >= 3 /*HAVE_FUTURE_DATA*/
-      );
-      this.syncState.loadedMediaLength(duration);
+      return bufferLength;
+    },
+    updateBufferStatus() {
+      let bufferLength = this.calculateBufferLength();
+      const currentTimestamp = this.player?.currentTime();
+      const duration = this.player?.duration();
+      const readyState = this.player?.readyState();
+      if (
+        currentTimestamp != null &&
+        bufferLength != -1 &&
+        duration != null &&
+        readyState != null
+      ) {
+        this.syncState.vJSBufferSecs(
+          bufferLength,
+          currentTimestamp,
+          this.subsReady && readyState >= 3 /*HAVE_FUTURE_DATA*/
+        );
+        this.syncState.loadedMediaLength(duration);
+      }
     },
     async getMediaDetails(itemId: string): Promise<BaseItemDto | undefined> {
       if (this.server == null) return; //keeps typescript happy
@@ -128,7 +137,7 @@ export default {
     async getPlaybackURL(
       item: BaseItemDto,
       audioTrackIndex: number
-    ): Promise<{url: string, type: string, transcode: boolean} | undefined> {
+    ): Promise<{ url: string; type: string; transcode: boolean } | undefined> {
       if (this.server == null) return; //keeps typescript happy
 
       const playbackInfo = await getItemPlaybackInfo(
@@ -159,7 +168,9 @@ export default {
         return;
       }
 
-      const playbackInfo = await this.getMediaPlaybackDetails(this.mediaDetails);
+      const playbackInfo = await this.getMediaPlaybackDetails(
+        this.mediaDetails
+      );
       this.playbackInfo = playbackInfo?.MediaSources?.[0] ?? null;
       if (this.playbackInfo == null) {
         console.log(`Item ${mediaId} does not appear to be playable`);
@@ -236,7 +247,7 @@ export default {
       videoElement.className = "video-js";
       const videoContainer = document.getElementById("videoPlayerContainer");
       if (videoContainer == null) {
-        console.error("#videoPlayerContainer not found")
+        console.error("#videoPlayerContainer not found");
         return;
       }
       videoContainer.appendChild(videoElement);
@@ -281,7 +292,7 @@ export default {
       }
 
       if (this.serverTimestamp != null) {
-        (this.player as Player).currentTime(this.serverTimestamp)
+        (this.player as Player).currentTime(this.serverTimestamp);
       }
 
       this.checkBufferingTask = setInterval(() => {
@@ -290,6 +301,9 @@ export default {
           (this.player?.readyState() ?? 0) >= 3
         ) {
           this.updateBufferStatus();
+        } else {
+          let bufferLength = this.calculateBufferLength();
+          this.syncState.bufferChangeWithoutAnnouncing(bufferLength);
         }
       }, 1000);
     },
@@ -372,7 +386,7 @@ export default {
     },
     volume() {
       return this.syncState.playerVolume;
-    }
+    },
   },
   watch: {
     serverSaysPlay(newVal) {
@@ -411,7 +425,7 @@ export default {
         this.updateBufferStatus();
       }
     },
-    mediaId(newVal: string) {
+    videoId(newVal: string) {
       this.lookupAndPlay(newVal);
     },
     async syncStateAudioTrack(newVal: number | null) {
@@ -448,7 +462,7 @@ export default {
     },
     volume(newVal: number) {
       this.player?.volume(newVal);
-    }
+    },
   },
 };
 </script>

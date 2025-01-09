@@ -57,6 +57,7 @@ export interface SyncSessionMemberPlaybackState {
   member: number;
   timestamp?: number;
   bufferSecs?: number;
+  receivedBufferTime?: number; //keep track of our own time when we received this packet
 }
 
 export interface SyncSessionChangePlaybackState {
@@ -222,6 +223,7 @@ export const useSyncStore = defineStore("sync", {
       this.trafficTimeout = setTimeout(this.onRoomDisconnect, 15000);
     },
     onReceivedPlaybackState(newState: SyncSessionMemberPlaybackState) {
+      newState.receivedBufferTime = this.playbackTimestamp ?? undefined;
       this.$patch((state) => {
         const index = state.playbackStates.findIndex(
           (it) => it.member == newState.member
@@ -344,7 +346,6 @@ export const useSyncStore = defineStore("sync", {
       this.announceMediaStatus();
     },
     vJSBufferSecs(length: number, currentTime: number, canPlay: boolean) {
-      console.log("Buffer status. Can play: " + canPlay);
       this.$patch((state) => {
         state.playbackBuffer = length;
         state.playbackTimestamp = currentTime;
@@ -357,6 +358,11 @@ export const useSyncStore = defineStore("sync", {
         }
       });
       this.announceMediaStatus();
+    },
+    bufferChangeWithoutAnnouncing(newBufferLength: number) {
+      this.$patch((state) => {
+        state.playbackBuffer = newBufferLength;
+      });
     },
     vJSTimeChange(to: number) {
       this.$patch((state) => {
@@ -462,6 +468,13 @@ export const useSyncStore = defineStore("sync", {
       } as any;
       this.socket?.send(JSON.stringify(packet));
       informPlaybackFinished();
+    },
+    changeLeader(newId: number) {
+      this.$patch((state) => {
+        if (state.session) {
+          state.session.leader = newId;
+        }
+      });
     }
   },
 });
@@ -604,6 +617,8 @@ function handleIncomingMessage(data: { type: string } & any) {
       syncStore.onReceiveChatMessage(data as SyncSessionChatMessage);
       break;
     case "leader-change":
+      const newLeader = (data as SyncSessionLeaderChange).newLeader;
+      syncStore.changeLeader(newLeader);
       break;
   }
 }

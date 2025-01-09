@@ -172,29 +172,33 @@ export default {
       }
     },
     playbackTimestamp(index: number): string | null {
-      let timestamp =
-        this.syncStore.getPlaybackStateByIndex(index)?.timestamp ?? null;
-      let buffered =
-        this.syncStore.getPlaybackStateByIndex(index)?.bufferSecs ?? null;
+      let memberState = this.syncStore.getPlaybackStateByIndex(index);
+      let arrivalTimestamp = memberState?.receivedBufferTime ?? null;
+      let ourCurrentTimestamp = this.syncStore.playbackTimestamp;
+      let timestamp = memberState?.timestamp ?? null;
+      let buffered = memberState?.bufferSecs ?? null;
       if (index === this.syncStore.session?.you) {
         timestamp = this.syncStore.playbackTimestamp;
         buffered = this.syncStore.playbackBuffer;
       }
 
+      let timeSincePacketArrival = (arrivalTimestamp !== null && ourCurrentTimestamp !== null) ? (ourCurrentTimestamp - arrivalTimestamp) : 0;
+
       if (timestamp === null) {
         return null;
       } else {
-        let hours = Math.floor(timestamp / 3600);
-        timestamp %= 3600;
-        let minutes = Math.floor(timestamp / 60);
-        let seconds = Math.floor(timestamp % 60);
+        let compensatedTimestamp = timestamp + timeSincePacketArrival;
+        let hours = Math.floor(compensatedTimestamp / 3600);
+        compensatedTimestamp %= 3600;
+        let minutes = Math.floor(compensatedTimestamp / 60);
+        let seconds = Math.floor(compensatedTimestamp % 60);
 
         let hoursS = String(hours).padStart(2, "0");
         let minutesS = String(minutes).padStart(2, "0");
         let secondsS = String(seconds).padStart(2, "0");
         let time = hoursS + ":" + minutesS + ":" + secondsS;
         if (buffered != null) {
-          time += " (" + Math.floor(buffered) + "s buffered)";
+          time += " (" + Math.floor(buffered - timeSincePacketArrival) + "s buffered)";
         }
         return time;
       }

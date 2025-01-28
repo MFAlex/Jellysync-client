@@ -328,8 +328,9 @@ export default {
         }
       }
     },
-    async showSubtitles(subTrack: null | SubtitleEntry) {
-      this.subsReady = false;
+    async showSubtitles(subTrack: null | SubtitleEntry, withoutPause = false) {
+      if (!withoutPause)
+        this.subsReady = false;
       cleanup();
       if (subTrack == null) {
         this.subsReady = true;
@@ -446,7 +447,7 @@ export default {
         const subtitleEntry =
           subtitleTracks.find((it) => it.trackIndex == newVal) ?? null;
         this.subtitleTrack = subtitleEntry;
-        this.showSubtitles(this.subtitleTrack);
+        this.showSubtitles(this.subtitleTrack, true);
       }
     },
     subsReady() {
@@ -473,5 +474,17 @@ export default {
   width: 100%;
   height: 100%;
   z-index: 30;
+}
+
+video::cue {
+  background: none;
+  color: white;
+  text-shadow:
+    0 0 4px black,
+    1px 1px 4px black,
+    -1px -1px 4px black,
+    1px -1px 4px black,
+    -1px 1px 4px black
+  ;
 }
 </style>

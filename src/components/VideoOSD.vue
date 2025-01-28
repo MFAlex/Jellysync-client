@@ -183,6 +183,7 @@
                       />
                     </template>
                   </v-radio>
+                  <v-btn color="primary" class="mt-2" variant="text" text="Reset subtitles" prepend-icon="mdi-restart" @click="resetSubtitles()" />
                 </v-radio-group>
               </v-card>
             </v-menu>
@@ -349,6 +350,9 @@ export default {
           div.innerHTML += "<div class='chapterMarker' style='left: "+posX+"px;' />";
         }
       }
+    },
+    resetSubtitles() {
+      this.syncStore.resetSubtitleTrack();
     }
   },
   computed: {

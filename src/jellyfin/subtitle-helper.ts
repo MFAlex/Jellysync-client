@@ -110,6 +110,7 @@ async function applyPGSSubtitles(
 
 async function applyVTTSubtitles(mediaElement: HTMLVideoElement, subsUrl: string): Promise<boolean> {
   cleanup();
+  videoObject = mediaElement;
 
   const trackElement = mediaElement.addTextTrack(
     "subtitles",
@@ -117,14 +118,33 @@ async function applyVTTSubtitles(mediaElement: HTMLVideoElement, subsUrl: string
     "und"
   );
   try {
-    const data: any = fetchSubtitles(subsUrl);
+    const data: any = await fetchSubtitles(subsUrl);
     for (const trackEvent of data.TrackEvents) {
-      const TrackCue = window.VTTCue || window.TextTrackCue;
-      const cue = new TrackCue(
+      const cue = new window.VTTCue(
         trackEvent.StartPositionTicks / 10000000,
         trackEvent.EndPositionTicks / 10000000,
         normalizeTrackEventText(trackEvent.Text)
       );
+
+      const srtCommand = trackEvent.Text.match(/^{\\an\d{1,2}}/gi);
+      if (srtCommand != null && srtCommand.length == 1) {
+        const position = parseInt(srtCommand[0].substring(4, srtCommand[0].indexOf("}")));
+        if (position > 6) {
+          cue.line = 0; //position at the top
+        } else if (position > 3) {
+          cue.line = -2; //position above the bottom row, meant to be the center
+        } else {
+          cue.line = -1;
+        }
+
+        if (position == 7 || position == 4 || position == 1) {
+          cue.lineAlign = "start";
+        } else if (position == 8 || position == 5 || position == 2) {
+          cue.align = "center";
+        } else {
+          cue.align = "end";
+        }
+      }
 
       trackElement.addCue(cue);
     }
@@ -132,7 +152,7 @@ async function applyVTTSubtitles(mediaElement: HTMLVideoElement, subsUrl: string
     trackElement.mode = "showing";
     return true;
   } catch (err) {
-    console.log("Error reading or parsing subtitles");
+    console.error("Error reading or parsing subtitles", err);
     return false;
   }
 }

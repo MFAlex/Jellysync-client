@@ -439,6 +439,19 @@ export const useSyncStore = defineStore("sync", {
       });
       informPlaybackState();
     },
+    async resetSubtitleTrack() {
+      const from = this.playbackSubtitleTrack;
+      const promise = new Promise((resolve, _) => {
+        this.$patch((state) => {
+          state.playbackSubtitleTrack = -1;
+          resolve(null);
+        });
+      });
+      await promise;
+      this.$patch((state) => {
+        state.playbackSubtitleTrack = from;
+      });
+    },
     setVolume(percent: number) {
       /*0.0 - 1.0*/
       this.$patch((state) => {

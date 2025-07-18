@@ -26,7 +26,7 @@ import {
   SubtitleEntry,
   SubtitlePreference,
 } from "@/jellyfin/playback-urls";
-import { applySubtitles, cleanup } from "@/jellyfin/subtitle-helper";
+import { applySubtitles, cleanup, addAssSubtitlesFromSrt } from "@/jellyfin/subtitle-helper";
 import { ServerCredentials, useAuthStore } from "@/store/authStore";
 import { useSyncStore } from "@/store/syncState";
 import VideoOSD from "@/components/VideoOSD.vue";
@@ -178,7 +178,13 @@ export default {
       }
 
       const audioTracks = getAudioDetails(this.playbackInfo);
-      const subtitleTracks = getSubtitleDetails(this.playbackInfo);
+      let subtitleTracks = getSubtitleDetails(this.playbackInfo);
+      // Add .ass converted subtitles if needed
+      subtitleTracks = await addAssSubtitlesFromSrt(
+        subtitleTracks,
+        this.playbackInfo,
+        this.server?.publicAddress
+      );
       this.syncState.loadedMediaDetails(
         this.mediaDetails,
         audioTracks,
@@ -207,12 +213,12 @@ export default {
 
       const desiredSubTrack =
         subtitlePreference == "always-full" ||
-        (audioTrack.preferred.includes("foreign") &&
-          subtitlePreference == "full")
+          (audioTrack.preferred.includes("foreign") &&
+            subtitlePreference == "full")
           ? "full"
           : subtitlePreference == "signs"
-          ? "signs"
-          : null;
+            ? "signs"
+            : null;
       if (desiredSubTrack == null) {
         this.subtitleTrack = null;
       } else {
@@ -359,7 +365,6 @@ export default {
         this.playbackInfo,
         subTrack
       );
-      //TODO: The subs are loaded now. Ready for playback
       if (subtitleSuccess) {
         this.subsReady = true;
         console.log("Subtitles are ready");
@@ -412,7 +417,7 @@ export default {
         this.syncState.serverPlaybackTimestamp != null &&
         Math.abs(
           (this.player.currentTime() ?? 0) -
-            this.syncState.serverPlaybackTimestamp
+          this.syncState.serverPlaybackTimestamp
         ) > 0.1
       ) {
         this.player.currentTime(this.syncState.serverPlaybackTimestamp);
@@ -441,11 +446,10 @@ export default {
         this.showSubtitles(this.subtitleTrack);
       }
     },
-    syncStateSubtitleTrack(newVal: number | null) {
-      if (this.subtitleTrack != newVal && this.playbackInfo != null) {
-        const subtitleTracks = getSubtitleDetails(this.playbackInfo);
+    syncStateSubtitleTrack: function (newVal: number | null) {
+      if (this.subtitleTrack?.trackIndex !== newVal && this.syncState.mediaSubtitleDetails) {
         const subtitleEntry =
-          subtitleTracks.find((it) => it.trackIndex == newVal) ?? null;
+          this.syncState.mediaSubtitleDetails.find((it: any) => it.trackIndex == newVal) ?? null;
         this.subtitleTrack = subtitleEntry;
         this.showSubtitles(this.subtitleTrack, true);
       }
@@ -484,7 +488,6 @@ video::cue {
     1px 1px 4px black,
     -1px -1px 4px black,
     1px -1px 4px black,
-    -1px 1px 4px black
-  ;
+    -1px 1px 4px black;
 }
 </style>

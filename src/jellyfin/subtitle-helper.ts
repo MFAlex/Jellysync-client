@@ -12,8 +12,8 @@ import { PgsRenderer } from 'libpgs';
 
 // Simple browser-compatible SRT to ASS converter (basic timing and text only)
 function simpleSrtToAss(srt: string): string {
-  // ASS header
-  const header = `[Script Info]\nScriptType: v4.00+\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,2,0,2,10,10,10,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`;
+  // ASS header with DejaVuSans
+  const header = `[Script Info]\nScriptType: v4.00+\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,DejaVuSans,20,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,0,100,100,0,0,1,2,0,2,10,10,10,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text`;
   // SRT to ASS time format
   function srtTimeToAss(time: string) {
     return time.replace(/(\d{2}):(\d{2}):(\d{2}),(\d{3})/, (_m, h, m, s, ms) => `${h}:${m}:${s}.${ms.substring(0,2)}`);
@@ -167,16 +167,14 @@ async function applySSASubtitles(
 ): Promise<boolean> {
   cleanup();
 
+  // Always add DejaVuSans.ttf from public/fonts
+  const dejaVuFontUrl = '/fonts/DejaVuSans.ttf';
+  let fontsArr = attachments ? [...attachments] : [];
+  if (!fontsArr.includes(dejaVuFontUrl)) fontsArr.push(dejaVuFontUrl);
   var options: any = {
     video: mediaElement,
     subUrl: subsUrl,
-    ...(attachments.length > 0
-      ? {
-          fonts: attachments,
-        }
-      : {
-          useLocalFonts: true,
-        }),
+    fonts: fontsArr,
     workerUrl: jassubWorker,
     wasmUrl: jassubWasmUrl,
   };

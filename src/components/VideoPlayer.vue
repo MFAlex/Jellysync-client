@@ -1,8 +1,5 @@
 <template>
-  <div
-    style="width: 100%; height: 100%; position: relative"
-    id="videoPlayerContainer"
-  >
+  <div style="width: 100%; height: 100%; position: relative" id="videoPlayerContainer">
     <VideoOSD />
   </div>
 </template>
@@ -359,16 +356,21 @@ export default {
         );
         return;
       }
-      const subtitleSuccess = await applySubtitles(
+      applySubtitles(
         videoElement,
         this.server.publicAddress,
         this.playbackInfo,
         subTrack
-      );
-      if (subtitleSuccess) {
-        this.subsReady = true;
-        console.log("Subtitles are ready");
-      }
+      ).then(() => {
+        console.log("Subtitles loaded successfully");
+      })
+        .catch((err) => {
+          console.error("Error applying subtitles:", err);
+        })
+        .finally(() => {
+          // just set it to be true regardless of what happens so we can display subs even if a non-fatal error occurs
+          this.subsReady = true;
+        });
     },
   },
   computed: {

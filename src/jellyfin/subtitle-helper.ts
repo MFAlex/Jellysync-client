@@ -4,8 +4,9 @@ import {
   getSubtitlePlaybackUrl,
   SubtitleEntry,
 } from "./playback-urls";
-import jassubWorker from "jassub/dist/jassub-worker.js?url";
-import jassubWasmUrl from "jassub/dist/jassub-worker.wasm?url";
+import jassubWorker from "jassub/dist/worker/worker.js?url";
+import jassubWasmUrl from "jassub/dist/wasm/jassub-worker.wasm?url";
+import jassubModernWasmUrl from "jassub/dist/wasm/jassub-worker-modern.wasm?url";
 import pgssubWorker from 'libpgs/dist/libpgs.worker.js?url';
 import JASSUB from "jassub";
 import { PgsRenderer } from 'libpgs';
@@ -177,19 +178,17 @@ async function applySSASubtitles(
     fonts: fontsArr,
     workerUrl: jassubWorker,
     wasmUrl: jassubWasmUrl,
+    modernWasmUrl: jassubModernWasmUrl,
+    useLocalFonts: true,
+    fallbackFont: "DejaVuSans"
   };
   if (subsContent) {
     options.subContent = subsContent;
   }
   jassubInstance = new JASSUB(options);
 
-  return new Promise(function(resolve, _) {
-    const function2 = () => {
-      (jassubInstance as any).removeEventListener("ready", function2);
-      resolve(true);
-    }
-    (jassubInstance as any).addEventListener("ready", function2);
-  });
+  await jassubInstance.ready;
+  return true;
 }
 
 async function applyPGSSubtitles(

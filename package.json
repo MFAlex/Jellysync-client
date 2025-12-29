@@ -10,12 +10,12 @@
   "dependencies": {
     "@jellyfin/sdk": "^0.11.0",
     "@mdi/font": "7.0.96",
-    "jassub": "^1.7.17",
+    "jassub": "^2.0.10",
     "libpgs": "^0.8.1",
     "pinia": "^2.0.23",
     "roboto-fontface": "*",
     "uuid": "^11.0.2",
-    "video.js": "^8.19.1",
+    "video.js": "^8.23.4",
     "vue": "^3.2.0",
     "vuetify": "^3.0.0",
     "webfontloader": "^1.0.0"

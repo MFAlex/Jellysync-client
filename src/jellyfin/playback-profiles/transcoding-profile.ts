@@ -104,7 +104,7 @@ export function getTranscodingProfiles(
     });
   }
 
-  if (hasMkvSupport(videoTestElement) && !isTizen()) {
+  /*if (hasMkvSupport(videoTestElement) && !isTizen()) {
     TranscodingProfiles.push({
       Container: 'mkv',
       Type: DlnaProfileType.Video,
@@ -114,7 +114,7 @@ export function getTranscodingProfiles(
       MaxAudioChannels: physicalAudioChannels.toString(),
       CopyTimestamps: true
     });
-  }
+  }*/
 
   if (hasVp8Support(videoTestElement)) {
     TranscodingProfiles.push({

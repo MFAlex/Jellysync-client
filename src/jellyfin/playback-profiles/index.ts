@@ -42,7 +42,7 @@ function getDeviceProfile(videoTestElement: HTMLVideoElement): DeviceProfile {
     MaxStreamingBitrate: 120_000_000,
     MaxStaticBitrate: 0,
     MusicStreamingTranscodingBitrate: Math.min(120_000_000, 192_000),
-    DirectPlayProfiles: getDirectPlayProfiles(videoTestElement),
+    DirectPlayProfiles: [],//getDirectPlayProfiles(videoTestElement),
     TranscodingProfiles: getTranscodingProfiles(videoTestElement),
     ContainerProfiles: [],
     CodecProfiles: getCodecProfiles(videoTestElement),

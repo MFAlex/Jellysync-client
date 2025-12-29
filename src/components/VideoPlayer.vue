@@ -33,7 +33,7 @@ import {
   PlaybackInfoResponse,
 } from "@jellyfin/sdk/lib/generated-client";
 import videojs from "video.js";
-import Player from "video.js/dist/types/player";
+import Player from "video.js/dist/types/player.d.ts";
 
 export default {
   data() {

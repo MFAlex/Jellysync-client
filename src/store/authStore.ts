@@ -9,6 +9,19 @@ export interface ServerCredentials {
   accessToken: string;
   userId: string;
   userName: string;
+  guestKey?: string;
+  guestUserId?: string;
+}
+
+export interface GuestCredentials {
+  accessToken: string;
+  publicAddress: string;
+  userId: string;
+}
+
+export function isServerCredentials(data: any): data is ServerCredentials {
+  return data != null && typeof data === "object" && typeof data["publicAddress"] === "string" && typeof data["userName"] === "string" &&
+    typeof data["accessToken"] === "string";
 }
 
 export const useAuthStore = defineStore("auth", {
@@ -19,7 +32,7 @@ export const useAuthStore = defineStore("auth", {
     apiSessions: {} as Record<string, Api>, //public address -> Api
     audioPreference: loadAudioPreference(),
     subsPreference: loadSubsPreference(),
-    sidebarPinned: loadSidebarPreference()
+    sidebarPinned: loadSidebarPreference(),
   }),
   getters: {
     getApiSessionFromPublicAddress: (state) => {
@@ -42,12 +55,12 @@ export const useAuthStore = defineStore("auth", {
       };
     },
     getServerByIndex: (state) => {
-      return (index: number): ServerCredentials | undefined => {
+      return (index: number): ServerCredentials | GuestCredentials | undefined => {
         return state.servers[index];
       };
     },
     getServerByAddress: (state) => {
-      return (address: string): ServerCredentials | undefined => {
+      return (address: string): ServerCredentials | GuestCredentials | undefined => {
         return state.servers.find((it) => it.publicAddress == address);
       };
     },
@@ -59,6 +72,11 @@ export const useAuthStore = defineStore("auth", {
         return state.servers.findIndex((it) => it.publicAddress == address);
       };
     },
+    getNonGuestServers: (state) => {
+      return (): ServerCredentials[] => {
+        return state.servers.filter(it => isServerCredentials(it))
+      }
+    }
   },
   actions: {
     addServer(credentials: ServerCredentials) {
@@ -66,7 +84,15 @@ export const useAuthStore = defineStore("auth", {
       this.servers.push(credentials);
       saveServers(this.servers);
     },
-    removeServer(credentials: ServerCredentials) {
+    addGuestAccess(hostname: string, guestKey: string, guestUserId: string) {
+      const server = this.getServerByAddress(hostname);
+      if (isServerCredentials(server)) {
+        server.guestKey = guestKey;
+        server.guestUserId = guestUserId;
+        saveServers(this.servers);
+      }
+    },
+    removeServer(credentials: GuestCredentials) {
       this.removeServerByAddress(credentials.publicAddress);
     },
     removeServerByAddress(address: string) {
@@ -95,18 +121,29 @@ export const useAuthStore = defineStore("auth", {
         state.sidebarPinned = isPinned;
       });
       saveSidebarPreference(isPinned);
+    },
+    consumingGuestAccesss(host: string, key: string, userId: string) {
+      this.$patch((state) => {
+        const guestCredentials = {
+          accessToken: key,
+          publicAddress: host,
+          userId
+        } as GuestCredentials;
+        this.removeServer(guestCredentials);
+        state.servers.push(guestCredentials);
+      });
     }
   },
 });
 
-function createApi(credentials: ServerCredentials): Api {
+function createApi(credentials: ServerCredentials | GuestCredentials): Api {
   return SDK.createApi(
     credentials.publicAddress,
     credentials.accessToken
   );
 }
 
-function loadServers(): ServerCredentials[] {
+function loadServers(): (ServerCredentials | GuestCredentials)[] {
   const settings = localStorage.getItem("jellysync_servers");
   return settings ? JSON.parse(settings) : [];
 }
@@ -137,8 +174,9 @@ function saveDisplayNameColor(color: string | null) {
   }
 }
 
-function saveServers(servers: ServerCredentials[]) {
-  localStorage.setItem("jellysync_servers", JSON.stringify(servers));
+function saveServers(servers: (ServerCredentials | GuestCredentials)[]) {
+  const toKeep = servers.filter(it => isServerCredentials(it));
+  localStorage.setItem("jellysync_servers", JSON.stringify(toKeep));
 }
 
 function saveTrackPreferences(audioPreference: AudioPreference, subsPreference: SubtitlePreference) {

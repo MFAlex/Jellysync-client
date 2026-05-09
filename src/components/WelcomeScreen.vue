@@ -47,7 +47,7 @@
             </v-toolbar>
             <v-list lines="two" density="comfortable">
               <v-list-item
-                v-for="server in authStore.servers"
+                v-for="server in authStore.getNonGuestServers()"
                 :key="server.publicAddress"
                 :value="server"
                 color="white"
@@ -77,7 +77,7 @@
               type="error"
             ></v-alert>
             <span class="text-caption pa-4"
-              >Other people are required to have an account on this server to
+              >If guest mode is not configured, other people are required to have an account on this server to
               join the room</span
             >
           </v-card>
@@ -104,7 +104,7 @@
 
         <template v-slot:default="{ isActive }">
           <v-card>
-            <v-toolbar title="Enter room code" color="primary">
+            <v-toolbar title="Join room" color="primary">
               <template v-slot:prepend>
                 <v-btn
                   icon="mdi-arrow-left"
@@ -120,13 +120,31 @@
               placeholder="Room code"
               variant="underlined"
               :error-messages="joiningRoomError"
-              :loading="joiningRoom"
+              :loading="loadingCheckedRoomDetails"
               append-inner-icon="mdi-arrow-right"
-              @click:append-inner="joinRoomVue(roomCode)"
               v-model="roomCode"
-              class="pa-6"
-              @keyup.enter="joinRoomVue(roomCode)"
+              class="pa-6 pb-0"
             />
+            <div v-if="checkedRoomDetails != null" class="pa-6 pt-0">
+              Room details: 
+              <ul class="pl-6">
+                <li>Jellyfin server address: {{ checkedRoomDetails.host }}</li>
+                <li>Members in room: {{ checkedRoomDetails.members }}</li>
+                <li>Guest access available: {{ checkedRoomDetails.guest ? "Yes" : "No" }}</li>
+              </ul>
+              <v-text-field
+                label="Display name"
+                variant="underlined"
+                v-model="displayName"
+                class="pt-4 pb-0"
+              />
+              <div class="d-flex">
+                <v-btn text="Join as Guest" style="width: 100px;" class="mr-4 flex-grow-1" :color="checkedRoomDetails.guest ? 'primary' : 'black'" 
+                  append-icon="mdi-arrow-right" :disabled="!checkedRoomDetails.guest" @click="joinRoomVue(roomCode, true)" />
+                <v-btn text="Join" style="width: 100px;" class="flex-grow-1" :color="checkedRoomDetails.hasAccount ? 'primary' : 'black'" 
+                  append-icon="mdi-arrow-right" :disabled="!checkedRoomDetails.hasAccount" @click="joinRoomVue(roomCode, false)" />
+              </div>
+            </div>
           </v-card>
         </template>
       </v-dialog>
@@ -193,7 +211,7 @@
               <span class="ml-4 text-h6">Jellyfin servers</span>
               <v-list lines="two" density="comfortable">
                 <v-list-item
-                  v-for="server in authStore.servers"
+                  v-for="server in authStore.getNonGuestServers()"
                   :key="server.publicAddress"
                   :value="server"
                   color="white"
@@ -202,6 +220,16 @@
                     <v-icon icon="mdi-server-network"></v-icon>
                   </template>
                   <template v-slot:append>
+                    <v-tooltip text="Add guest account" v-if="server.guestKey === undefined" location="top" offset="0">
+                      <template v-slot:activator="{ props }">
+                        <v-btn v-bind="props" icon="mdi-plus" variant="plain" @click="guestHostname = server.publicAddress" />
+                      </template>
+                    </v-tooltip>
+                    <v-tooltip text="Includes guest account" v-else location="top" offset="0">
+                      <template v-slot:activator="{ props }">
+                        <v-btn v-bind="props" icon="mdi-account" variant="plain" @click="guestHostname = server.publicAddress" />
+                      </template>
+                    </v-tooltip>
                     <v-btn
                       icon="mdi-delete"
                       variant="plain"
@@ -212,6 +240,36 @@
 
                   <v-list-item-title v-text="server.publicAddress" />
                   <v-list-item-subtitle v-text="server.userName" />
+
+                  <v-expand-transition>
+                    <div v-show="server.publicAddress == guestHostname">
+                      <v-text-field
+                        v-model="guestUsername"
+                        variant="underlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        placeholder="Username"
+                        required
+                      ></v-text-field>
+                      <v-text-field
+                        v-model="guestPassword"
+                        variant="underlined"
+                        density="comfortable"
+                        hide-details="auto"
+                        placeholder="Password"
+                        type="password"
+                        required
+                      ></v-text-field>
+                      <v-btn
+                        class="mt-2"
+                        variant="outlined"
+                        color="secondary"
+                        :loading="loadingGuestLoginForm"
+                        @click="addGuestAccount()"
+                        >Add Guest Account</v-btn
+                      >
+                    </div>
+                  </v-expand-transition>
                 </v-list-item>
                 <v-expansion-panels elevation="0">
                   <v-expansion-panel>
@@ -283,8 +341,8 @@
 <script lang="ts">
 import { authenticateWithServer, logoutOfServer } from "@/jellyfin/auth-api";
 import { AudioPreference, SubtitlePreference } from "@/jellyfin/playback-urls";
-import { ServerCredentials, useAuthStore } from "@/store/authStore";
-import { createRoom, joinRoom, useSyncStore } from "@/store/syncState";
+import { isServerCredentials, ServerCredentials, useAuthStore } from "@/store/authStore";
+import { checkRoom, createRoom, joinRoom, useSyncStore } from "@/store/syncState";
 
 export default {
   data() {
@@ -304,13 +362,22 @@ export default {
       roomCode: "",
       addingServer: false,
       joinDialogOpen: false,
+      loadingCheckedRoomDetails: false,
+      checkedRoomDetails: null as null | {host: string; guest: boolean; members: number; hasAccount: boolean},
+      guestHostname: "",
+      guestUsername: "",
+      guestPassword: "",
+      loadingGuestLoginForm: false
     };
   },
   methods: {
     async addJellyfinServer() {
       this.loadingLoginForm = true;
       this.loginError = null;
-      const address = this.loginFormServerAddress;
+      let address = this.loginFormServerAddress;
+      if (address.endsWith("/")) {
+        address = address.substring(0, address.length - 2);
+      }
       const username = this.loginFormUsername;
       const password = this.loginFormPassword;
       const result = (await authenticateWithServer(
@@ -333,6 +400,30 @@ export default {
         this.addingServer = false;
       }
     },
+    async addGuestAccount() {
+      this.loadingGuestLoginForm = true;
+      let address = this.guestHostname;
+      let username = this.guestUsername;
+      let password = this.guestPassword;
+      const result = (await authenticateWithServer(
+        address,
+        username,
+        password
+      )) as any;
+      this.loadingLoginForm = false;
+      if (result.reason != undefined) {
+        this.loginError = result.reason;
+        console.error((result as any).reason);
+      } else if (result == null || result.publicAddress == null) {
+        this.loginError = "Failed to login";
+      } else {
+        const details = result as ServerCredentials;
+        this.authStore.addGuestAccess(address, details.accessToken, details.userId);
+        this.guestHostname = "";
+        this.guestUsername = "";
+        this.guestPassword = "";
+      }
+    },
     async createRoomVue(server: string) {
       if (this.authStore.displayName != null) {
         // default to purple
@@ -340,10 +431,13 @@ export default {
           this.authStore.displayNameColor = "purple";
         }
         this.creatingRoomFor = server;
+        const serverObj = useAuthStore().getServerByAddress(server);
+        const guestKey = (serverObj !== undefined && isServerCredentials(serverObj) && serverObj.guestKey !== undefined && serverObj.guestUserId !== undefined) ? (serverObj.guestKey+"|"+serverObj.guestUserId) : undefined;
         const result = await createRoom(
           server,
           this.authStore.displayName,
-          this.authStore.displayNameColor
+          this.authStore.displayNameColor,
+          guestKey
         );
         this.creatingRoomFor = null;
         if (typeof result === "string") {
@@ -351,7 +445,18 @@ export default {
         }
       }
     },
-    async joinRoomVue(code: string) {
+    async checkRoomVue(code: string) {
+      this.loadingCheckedRoomDetails = true;
+      const result = await checkRoom(code);
+      this.loadingCheckedRoomDetails = false;
+      if (typeof result === "boolean") {
+        this.joiningRoomError = "Room not found";
+      } else {
+        const hasAccount = isServerCredentials(this.authStore.getServerByAddress(result.host));
+        this.checkedRoomDetails = {hasAccount, ...result};
+      }
+    },
+    async joinRoomVue(code: string, guest: boolean) {
       if (this.authStore.displayName != null) {
         // default to purple
         if (this.authStore.displayNameColor == null) {
@@ -361,7 +466,8 @@ export default {
         const result = await joinRoom(
           code,
           this.authStore.displayName,
-          this.authStore.displayNameColor
+          this.authStore.displayNameColor,
+          guest
         );
         this.joiningRoom = false;
         if (typeof result === "string") {
@@ -435,7 +541,17 @@ export default {
     if (room != null) {
       this.joinDialogOpen = true;
       this.roomCode = room;
-      this.joinRoomVue(room);
+      this.checkRoomVue(room);
+    }
+  },
+  watch: {
+    roomCode(newVal: string | null) {
+      this.loadingCheckedRoomDetails = false;
+      this.joiningRoomError = null;
+      this.checkedRoomDetails = null;
+      if (newVal != null && newVal.length == 32) {
+        this.checkRoomVue(newVal);
+      }
     }
   }
 };

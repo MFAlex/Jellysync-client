@@ -12,7 +12,7 @@ import {
 import { getItemsApi } from "@jellyfin/sdk/lib/utils/api/items-api";
 import { getMediaInfoApi } from "@jellyfin/sdk/lib/utils/api/media-info-api";
 import playbackProfile from "@/jellyfin/playback-profiles";
-import { ServerCredentials, useAuthStore } from "@/store/authStore";
+import { GuestCredentials, useAuthStore } from "@/store/authStore";
 import { ensureDeviceId } from "./device-id";
 
 export interface AudioEntry {
@@ -33,7 +33,7 @@ export type SubtitlePreference = "off" | "signs" | "full" | "always-full";
 
 export async function resolveItemId(
   itemId: string,
-  server: ServerCredentials
+  server: GuestCredentials
 ): Promise<BaseItemDto | undefined> {
   const authStore = useAuthStore();
   const session = authStore.getApiSessionFromPublicAddress(
@@ -62,7 +62,7 @@ export async function resolveItemId(
 export async function getItemPlaybackInfo(
   item: BaseItemDto,
   audioStreamIndex = 0,
-  server: ServerCredentials
+  server: GuestCredentials
 ): Promise<PlaybackInfoResponse | undefined> {
   const authStore = useAuthStore();
   const session = authStore.getApiSessionFromPublicAddress(
@@ -85,7 +85,7 @@ export async function getItemPlaybackInfo(
 
 export function getVideoPlaybackUrl(
   mediaSource: MediaSourceInfo,
-  server: ServerCredentials
+  server: GuestCredentials
 ): {url: string, type: string, transcode: boolean} | undefined {
   if (
     mediaSource?.SupportsDirectStream &&

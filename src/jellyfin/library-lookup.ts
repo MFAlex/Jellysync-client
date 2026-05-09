@@ -1,6 +1,6 @@
 import { getItemsApi } from "@jellyfin/sdk/lib/utils/api/items-api";
 import { getTvShowsApi } from "@jellyfin/sdk/lib/utils/api/tv-shows-api";
-import { ServerCredentials, useAuthStore } from "@/store/authStore";
+import { GuestCredentials, useAuthStore } from "@/store/authStore";
 import { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 
 export interface VideoMetadataEntry {
@@ -49,7 +49,7 @@ export function isEpisode(data: any): data is EpisodeMetadataEntry {
 
 export async function searchAll(
   searchTerm: string,
-  server: ServerCredentials
+  server: GuestCredentials
 ): Promise<BaseItemDto[] | undefined> {
   const authStore = useAuthStore();
   const session = authStore.getApiSessionFromPublicAddress(
@@ -79,7 +79,7 @@ export async function searchAll(
 
 export async function getSeasons(
   show: VideoMetadataEntry,
-  server: ServerCredentials
+  server: GuestCredentials
 ): Promise<BaseItemDto[] | undefined> {
   const authStore = useAuthStore();
   const session = authStore.getApiSessionFromPublicAddress(
@@ -106,7 +106,7 @@ export async function getSeasons(
 
 export async function getEpisodes(
   season: SeasonMetadataEntry,
-  server: ServerCredentials
+  server: GuestCredentials
 ): Promise<BaseItemDto[] | undefined> {
   const authStore = useAuthStore();
   const session = authStore.getApiSessionFromPublicAddress(
@@ -134,7 +134,7 @@ export async function getEpisodes(
 
 export async function getNextEpisode(
   episode: BaseItemDto,
-  server: ServerCredentials
+  server: GuestCredentials
 ): Promise<BaseItemDto | undefined> {
   const authStore = useAuthStore();
   const session = authStore.getApiSessionFromPublicAddress(

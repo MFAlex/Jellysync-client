@@ -54,7 +54,7 @@
   </div>
 </template>
 <script lang="ts">
-import { ServerCredentials, useAuthStore } from "@/store/authStore";
+import { GuestCredentials, ServerCredentials, useAuthStore } from "@/store/authStore";
 import { useSyncStore } from "@/store/syncState";
 import { BaseItemDto } from "@jellyfin/sdk/lib/generated-client";
 import EpisodeSearch from "@/components/EpisodeSearch.vue";
@@ -142,7 +142,7 @@ export default {
       }
       return this.syncStore.lastPlayed;
     },
-    server(): null | ServerCredentials {
+    server(): null | ServerCredentials | GuestCredentials {
       const index = this.syncStore.serverIndex;
       if (index >= 0) {
         return this.authStore.getServerByIndex(index) ?? null;

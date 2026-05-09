@@ -30,6 +30,11 @@
                   <v-icon v-bind="props" icon="mdi-crown" size="small" style="cursor: pointer" />
                 </template>
               </v-tooltip>
+              <v-tooltip text="Guest" v-if="user.guest" location="top" offset="0">
+                <template v-slot:activator="{ props }">
+                  <v-icon v-bind="props" icon="mdi-account" size="small" style="cursor: pointer" />
+                </template>
+              </v-tooltip>
             </div>
             <div>
               <span v-if="playbackStatus(user.index) == 'nothing-playing'">Nothing playing</span>
@@ -104,6 +109,11 @@
               <v-tooltip text="Room leader" v-if="user.index == syncStore.session?.leader" location="top" offset="0">
                 <template v-slot:activator="{ props }">
                   <v-icon v-bind="props" icon="mdi-crown" size="small" style="cursor: pointer" />
+                </template>
+              </v-tooltip>
+              <v-tooltip text="Guest" v-if="user.guest" location="top" offset="0">
+                <template v-slot:activator="{ props }">
+                  <v-icon v-bind="props" icon="mdi-account" size="small" style="cursor: pointer" />
                 </template>
               </v-tooltip>
             </div>

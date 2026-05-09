@@ -24,7 +24,7 @@ import {
   SubtitlePreference,
 } from "@/jellyfin/playback-urls";
 import { applySubtitles, cleanup, addAssSubtitlesFromSrt } from "@/jellyfin/subtitle-helper";
-import { ServerCredentials, useAuthStore } from "@/store/authStore";
+import { GuestCredentials, ServerCredentials, useAuthStore } from "@/store/authStore";
 import { useSyncStore } from "@/store/syncState";
 import VideoOSD from "@/components/VideoOSD.vue";
 import {
@@ -55,7 +55,7 @@ export default {
       },
       mediaDetails: undefined as undefined | BaseItemDto,
       playbackInfo: null as null | MediaSourceInfo,
-      server: undefined as undefined | ServerCredentials,
+      server: undefined as undefined | ServerCredentials | GuestCredentials,
       subsReady: false,
       videoJSReady: false,
       checkBufferingTask: null as null | NodeJS.Timeout,
@@ -180,7 +180,7 @@ export default {
       subtitleTracks = await addAssSubtitlesFromSrt(
         subtitleTracks,
         this.playbackInfo,
-        this.server?.publicAddress
+        this.server!.publicAddress
       );
       this.syncState.loadedMediaDetails(
         this.mediaDetails,

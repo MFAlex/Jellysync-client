@@ -16,6 +16,7 @@ export interface SyncSessionMember {
   index: number;
   displayName: string;
   displayNameColor: string;
+  guest: boolean;
 }
 
 export interface CreateRoomRequest {
@@ -23,6 +24,12 @@ export interface CreateRoomRequest {
   displayName: string;
   displayNameColor: string;
   jellyfinHost: string;
+  guestKey?: string;
+}
+
+export interface CheckRoomRequest {
+  type: "check-room";
+  room: string;
 }
 
 export interface JoinRoomRequest {
@@ -30,6 +37,7 @@ export interface JoinRoomRequest {
   room: string;
   displayName: string;
   displayNameColor: string;
+  guest: boolean;
 }
 
 export interface SyncSession {
@@ -39,6 +47,7 @@ export interface SyncSession {
   you: number;
   members: SyncSessionMember[];
   jellyfinHost: string;
+  guestCredentials?: string;
 }
 
 export interface SyncSessionLeaderChange {
@@ -492,16 +501,76 @@ export const useSyncStore = defineStore("sync", {
   },
 });
 
+export async function checkRoom(
+  room: string
+): Promise<boolean | {guest: boolean; host: string; members: number;}> {
+  const checkRequest = {
+    type: "check-room",
+    room
+  } as CheckRoomRequest;
+  
+  const timeoutPromise = new Promise<boolean>((resolve) =>
+    setTimeout(() => {
+      resolve(false);
+    }, 10000)
+  );
+  const socket = new WebSocket(websocketUrl);
+  const connectPromise = new Promise<boolean>((resolve, _) => {
+    const closeHandler = () => {
+      resolve(false);
+    };
+    socket.addEventListener("open", (_) => {
+      socket.removeEventListener("close", closeHandler);
+      socket.send(JSON.stringify(checkRequest));
+      resolve(true);
+    });
+    socket.addEventListener("close", closeHandler);
+  });
+  const open = await Promise.race([connectPromise, timeoutPromise]);
+  if (!open) {
+    console.log("Unsuccessful connection attempt to jellysync server.");
+    return false;
+  }
+  const roomDetailsPromise = new Promise<boolean | {guest: boolean; host: string; members: number;}>((resolve) => {
+    socket.addEventListener("message", (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        const exists = typeof data["exists"] === "boolean" && data["exists"];
+        if (exists) {
+          const host = typeof data["host"] === "string" ? data["host"] : null;
+          const guestAccess = typeof data["guest-access"] === "boolean" ? data["guest-access"] : null;
+          const numMembers = typeof data["num-members"] === "number" ? data["num-members"] : null;
+          if (host != null && guestAccess != null && numMembers != null) {
+            resolve({host, guest: guestAccess, members: numMembers})
+          } else {
+            resolve(false);
+          }
+        } else {
+          resolve(false);
+        }
+      } catch (err) {
+        console.error("Error handling incoming message: '" + event.data + "'");
+        console.error(err);
+        resolve(false);
+      }
+    });
+  });
+  const promise = await Promise.race([roomDetailsPromise, timeoutPromise]);
+  return promise;
+}
+
 export async function joinRoom(
   room: string,
   displayName: string,
-  displayNameColor: string
+  displayNameColor: string,
+  guest: boolean
 ): Promise<string | SyncSession> {
   const joinRequest = {
     type: "join",
     room,
     displayName,
-    displayNameColor
+    displayNameColor,
+    guest
   } as JoinRoomRequest;
   return await connect(joinRequest);
 }
@@ -510,12 +579,14 @@ export async function createRoom(
   jellyfinHost: string,
   displayName: string,
   displayNameColor: string,
+  guestKey?: string
 ): Promise<string | SyncSession> {
   const createRequest = {
     type: "create",
     jellyfinHost,
     displayName,
     displayNameColor,
+    guestKey
   } as CreateRoomRequest;
   return await connect(createRequest);
 }
@@ -556,6 +627,13 @@ async function connect(initialPayload: any): Promise<string | SyncSession> {
         if (typeof data.type === "string" && data.type === "session") {
           socket.removeEventListener("message", messageHandler);
           socket.removeEventListener("close", closeHandler);
+
+          if (typeof data === "object" && data.guestCredentials !== undefined) {
+            const guestKey = data.guestCredentials.split("|")[0];
+            const guestUserId = data.guestCredentials.split("|")[1];
+            useAuthStore().consumingGuestAccesss(data.jellyfinHost, guestKey, guestUserId);
+          }
+
           resolve(data);
         }
       } catch (err) {
@@ -570,11 +648,7 @@ async function connect(initialPayload: any): Promise<string | SyncSession> {
   if (typeof session !== "boolean") {
     console.log("Connected to session");
     const authStore = useAuthStore();
-    if (authStore.getServerByAddress(session.jellyfinHost) == undefined) {
-      socket.close();
-    } else {
-      bindToSocket(socket, session);
-    }
+    bindToSocket(socket, session);
     return session;
   } else {
     socket.close();

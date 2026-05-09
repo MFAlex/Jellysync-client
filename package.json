@@ -10,7 +10,7 @@
   "dependencies": {
     "@jellyfin/sdk": "^0.13.0",
     "@mdi/font": "7.0.96",
-    "jassub": "^1.8.8",
+    "jassub": "^2.5.1",
     "libpgs": "^0.8.1",
     "pinia": "^2.0.23",
     "roboto-fontface": "*",

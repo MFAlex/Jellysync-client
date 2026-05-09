@@ -4,11 +4,14 @@ import {
   getSubtitlePlaybackUrl,
   SubtitleEntry,
 } from "./playback-urls";
-import jassubWorker from "jassub/dist/jassub-worker.js?url";
-import jassubWasmUrl from "jassub/dist/jassub-worker.wasm?url";
+import JASSUB from "jassub"
+import workerUrl from 'jassub/dist/worker/worker.js?worker&url'
+import wasmUrl from 'jassub/dist/wasm/jassub-worker.wasm?url'
+import modernWasmUrl from 'jassub/dist/wasm/jassub-worker-modern.wasm?url'
+import fallbackFontUrl from 'jassub/dist/default.woff2?url'
 import pgssubWorker from 'libpgs/dist/libpgs.worker.js?url';
-import JASSUB from "jassub";
 import { PgsRenderer } from 'libpgs';
+import { loadFonts, loadSubtitleTrack } from "@/utils/subtitles";
 
 // Simple browser-compatible SRT to ASS converter (basic timing and text only)
 function simpleSrtToAss(srt: string): string {
@@ -166,17 +169,39 @@ async function applySSASubtitles(
   subsContent?: string
 ): Promise<boolean> {
   cleanup();
+  let subs_str = subsContent;
+  if (subsContent === undefined) {
+    console.log("Loading", subsUrl);
+    const subs = await loadSubtitleTrack(subsUrl);
+    if (subs == null) return false;
+    const textDecoder = new TextDecoder();
+    subs_str = textDecoder.decode(subs);
+  }
+  const fonts = await loadFonts(attachments, fallbackFontUrl) ?? {};
+  const config = {
+      video: mediaElement,
+      subContent: subs_str,
+      fonts: Object.values(fonts),
+      defaultFont: "Liberation Sans",
+      workerUrl,
+      wasmUrl,
+      modernWasmUrl,
+      queryFonts: false
+  };
+  jassubInstance = new JASSUB(config as any);
+  await jassubInstance.ready;
+  return true;
 
   // Always add DejaVuSans.ttf from public/fonts
-  const dejaVuFontUrl = '/fonts/DejaVuSans.ttf';
+  /*const dejaVuFontUrl = '/fonts/DejaVuSans.ttf';
   let fontsArr = attachments ? [...attachments] : [];
   if (!fontsArr.includes(dejaVuFontUrl)) fontsArr.push(dejaVuFontUrl);
   var options: any = {
     video: mediaElement,
     subUrl: subsUrl,
     fonts: fontsArr,
-    workerUrl: jassubWorker,
-    wasmUrl: jassubWasmUrl,
+    workerUrl,
+    wasmUrl,
     fallbackFont: "DejaVuSans",
     useLocalFonts: false
   };
@@ -191,7 +216,7 @@ async function applySSASubtitles(
       resolve(true);
     }
     (jassubInstance as any).addEventListener("ready", function2);
-  });
+  });*/
 }
 
 async function applyPGSSubtitles(

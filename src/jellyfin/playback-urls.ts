@@ -140,25 +140,44 @@ export function getSubtitleDetails(
     }
   });
 
-  const bestFull = list.findIndex(it => {
+  const trackScores = list.map(it => {
     const title = it.title.toLowerCase();
-    return (it.language.toLowerCase().includes("english") || title.includes("eng")) && (title.includes("dialog") || title.includes("full") || title.includes("honorific") || title.includes("honourific"))
-  })
-  const bestSigns = list.findIndex(it => {
-    const title = it.title.toLowerCase();
-    return (it.language.toLowerCase().includes("english") || title.includes("eng")) && (title.includes("sign") || title.includes("s&s"))
+    const language = it.language.toLowerCase();
+    const format = it.format;
+    let score = 0;
+    if (language.includes("eng")) score += 1;
+    if (format == "ass" || format == "srt") score += 100;
+    let fullScore = score;
+    let signScore = score;
+    for (let word of ["dialog", "full", "honorific", "honourific"]) {
+      if (title.includes(word)) {
+        fullScore += 10;
+        signScore -= 10;
+      }
+    }
+    for (let word of ["sign", "s&s"]) {
+      if (title.includes(word)) {
+        fullScore -= 10;
+        signScore += 10;
+      }
+    }
+
+    return [it, fullScore, signScore];
   })
 
-  if (bestFull != -1) {
-    list[bestFull].preferred.push("full");
-  } else if (list.length > 0) {
-    list[0].preferred.push("full");
+  const bestFull = trackScores.reduce((prev, current) => {
+    return (prev && prev[1] > current[1]) ? prev : current
+  })
+  const bestSigns = trackScores.reduce((prev, current) => {
+    return (prev && prev[2] > current[2]) ? prev : current
+  })
+
+  if (bestFull != null) {
+    (bestFull[0] as SubtitleEntry).preferred.push("full");
   }
 
-  if (bestSigns != -1) {
-    list[bestSigns].preferred.push("signs");
-  } else if (list.length > 0) {
-    list[0].preferred.push("signs");
+  if (bestSigns != null) {
+    (bestSigns[0] as SubtitleEntry).preferred.push("signs");
   }
 
   return list;
